@@ -382,12 +382,12 @@ def compact_history(messages):
 # Emergency: reactiveCompact — on API error
 def reactive_compact(messages):
     transcript = write_transcript(messages)
-    summary = summarize_history(messages)
     tail_start = max(0, len(messages) - 5)
     if (tail_start > 0 and tail_start < len(messages)
             and _is_tool_result_message(messages[tail_start])
             and _message_has_tool_use(messages[tail_start - 1])):
         tail_start -= 1
+    summary = summarize_history(messages[:tail_start])
     return [{"role": "user", "content": f"[Reactive compact]\n\n{summary}"}, *messages[tail_start:]]
 
 

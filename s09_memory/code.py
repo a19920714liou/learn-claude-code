@@ -540,12 +540,12 @@ def compact_history(msgs):
 
 def reactive_compact(msgs):
     write_transcript(msgs)
-    summary = summarize_history(msgs)
     tail_start = max(0, len(msgs) - 5)
     if (tail_start > 0 and tail_start < len(msgs)
             and _is_tool_result_message(msgs[tail_start])
             and _message_has_tool_use(msgs[tail_start - 1])):
         tail_start -= 1
+    summary = summarize_history(msgs[:tail_start])
     return [{"role": "user", "content": f"[Reactive compact]\n\n{summary}"}, *msgs[tail_start:]]
 
 
