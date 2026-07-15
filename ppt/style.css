@@ -1,0 +1,275 @@
+/* lcc-deck · learn-claude-code course deck
+ * Inherits tokens from active theme (tokyo-night default).
+ * Scoped under .lcc so it never collides with base.css.
+ */
+
+.lcc .slide { padding: 60px 88px; }
+
+/* ---------- kicker / eyebrow ---------- */
+.lcc .kicker {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px; color: var(--text-3);
+  letter-spacing: .16em; text-transform: uppercase;
+  margin: 0 0 16px 0;
+}
+.lcc .part-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 12px; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent-3, #7dcfff);
+}
+
+/* ---------- headings ---------- */
+.lcc .h1 {
+  font-size: clamp(40px, 5.4vw, 74px);
+  line-height: 1.1; letter-spacing: -.02em;
+  font-weight: 800; margin: 0 0 22px 0;
+}
+.lcc .h2 {
+  font-size: clamp(30px, 3.6vw, 50px);
+  line-height: 1.18; letter-spacing: -.012em;
+  font-weight: 700; margin: 0 0 26px 0;
+}
+.lcc .h3 {
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.25; font-weight: 600; margin: 0 0 12px 0;
+  color: var(--text-1);
+}
+.lcc .lede { font-size: 19px; line-height: 1.6; color: var(--text-2); }
+.lcc .dim { color: var(--text-2); }
+.lcc .dim2 { color: var(--text-3); }
+.lcc .accent { color: var(--accent, #7aa2f7); font-weight: 700; }
+.lcc .accent2 { color: var(--accent-2, #bb9af7); font-weight: 700; }
+.lcc .accent3 { color: var(--accent-3, #7dcfff); font-weight: 700; }
+.lcc .good { color: var(--good, #9ece6a); }
+.lcc .warn { color: var(--warn, #e0af68); }
+.lcc .bad { color: var(--bad, #f7768e); }
+.lcc .mono {
+  font-family: var(--font-mono, monospace);
+  font-size: .9em; padding: 2px 7px; border-radius: 6px;
+  background: rgba(192,202,245,.08); color: var(--accent-3, #7dcfff);
+}
+.lcc .tc { text-align: center; }
+.lcc .mt-s { margin-top: 10px; }
+.lcc .mt-m { margin-top: 20px; }
+.lcc .mt-l { margin-top: 34px; }
+
+/* ---------- MANTRA badge (every lesson has one) ---------- */
+.lcc .mantra {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-size: clamp(18px, 2vw, 26px); font-weight: 600;
+  color: var(--text-1); line-height: 1.3;
+  padding: 14px 22px; border-radius: 12px;
+  background: color-mix(in srgb, var(--accent,#7aa2f7) 10%, transparent);
+  border-left: 4px solid var(--accent, #7aa2f7);
+  max-width: 100%;
+}
+.lcc .mantra .q {
+  font-family: var(--font-mono); font-size: .7em; opacity: .55;
+}
+
+/* ---------- lesson number chip ---------- */
+.lcc .lesson-num {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--font-mono, monospace); font-size: 14px;
+  color: var(--accent-3, #7dcfff); letter-spacing: .08em;
+  margin-bottom: 10px;
+}
+.lcc .lesson-num .id {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 34px; height: 28px; padding: 0 10px;
+  background: var(--grad, linear-gradient(135deg,#7aa2f7,#bb9af7));
+  color: #16161e; font-weight: 800; border-radius: 7px; font-size: 13px;
+}
+
+/* ---------- lesson head (title row: number + title + layer pill) ---------- */
+.lcc .lesson-head { margin-bottom: 22px; }
+.lcc .layer-pill {
+  font-family: var(--font-mono, monospace); font-size: 11px;
+  padding: 3px 11px; border-radius: 999px;
+  background: rgba(187,154,247,.12); color: var(--accent-2, #bb9af7);
+  border: 1px solid rgba(187,154,247,.25);
+  letter-spacing: .06em;
+}
+
+/* ---------- generic cards ---------- */
+.lcc .card {
+  background: var(--surface, #24283b);
+  border: 1px solid var(--border, rgba(192,202,245,.12));
+  border-radius: 12px; padding: 18px 20px;
+}
+.lcc .card-soft { background: var(--surface-2, #2f334d); }
+.lcc .card-accent { border-top: 3px solid var(--accent, #7aa2f7); }
+.lcc .card-accent2 { border-top: 3px solid var(--accent-2, #bb9af7); }
+.lcc .card h4 { margin: 0 0 8px 0; font-size: 16px; color: var(--text-1); }
+.lcc .card p, .lcc .card li { font-size: 14px; line-height: 1.6; color: var(--text-2); margin: 0; }
+.lcc .card ul { margin: 0; padding-left: 18px; }
+.lcc .card ul li + li { margin-top: 4px; }
+
+/* ---------- feature row (number + text) ---------- */
+.lcc .feat {
+  display: grid; grid-template-columns: 32px 1fr; gap: 14px;
+  padding: 12px 0; align-items: start;
+  border-bottom: 1px solid var(--border, rgba(192,202,245,.08));
+}
+.lcc .feat:last-child { border-bottom: none; }
+.lcc .feat .n { font-family: var(--font-mono); font-weight: 800; font-size: 18px; line-height: 1.2; }
+.lcc .feat b { display: block; font-size: 16px; margin-bottom: 3px; color: var(--text-1); }
+.lcc .feat p { font-size: 14px; color: var(--text-2); line-height: 1.55; margin: 0; }
+.lcc .blue { color: var(--accent, #7aa2f7); }
+.lcc .green { color: var(--good, #9ece6a); }
+.lcc .orange { color: var(--warn, #e0af68); }
+.lcc .purple { color: var(--accent-2, #bb9af7); }
+.lcc .cyan { color: var(--accent-3, #7dcfff); }
+.lcc .red { color: var(--bad, #f7768e); }
+
+/* ---------- code block (tokyo-night palette) ---------- */
+.lcc .code-block {
+  background: #16161e;
+  border: 1px solid var(--border, rgba(192,202,245,.12));
+  border-radius: 12px; padding: 18px 22px;
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 14.5px; line-height: 1.75; color: #c0caf5;
+  white-space: pre; text-align: left; overflow-x: auto;
+}
+.lcc .code-block .c { color: #565f89; font-style: italic; }    /* comment */
+.lcc .code-block .k { color: #bb9af7; }                          /* keyword */
+.lcc .code-block .s { color: #9ece6a; }                           /* string  */
+.lcc .code-block .f { color: #7aa2f7; }                           /* func    */
+.lcc .code-block .n { color: #ff9e64; }                           /* number  */
+.lcc .code-block .d { color: #7dcfff; }                           /* def/var */
+.lcc .code-block .o { color: #89ddff; }                           /* op      */
+.lcc .code-block .b { color: #f7768e; }                           /* builtin */
+.lcc .code-block .hl {
+  background: rgba(187,154,247,.16);
+  border-left: 2px solid var(--accent-2, #bb9af7);
+  padding-left: 8px; margin-left: -10px; display: block;
+}
+
+/* ---------- two-column body (concept | code/visual) ---------- */
+.lcc .split { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+.lcc .split.l45 { grid-template-columns: 4fr 5fr; }
+.lcc .split.l54 { grid-template-columns: 5fr 4fr; }
+
+/* ---------- grids ---------- */
+.lcc .grid { display: grid; gap: 16px; }
+.lcc .grid.g2 { grid-template-columns: 1fr 1fr; }
+.lcc .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+.lcc .grid.g4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ---------- stacked list rows ---------- */
+.lcc .stack { display: flex; flex-direction: column; gap: 10px; }
+
+/* ---------- bullet list with accent dot ---------- */
+.lcc .blist { list-style: none; padding: 0; margin: 0; }
+.lcc .blist li {
+  position: relative; padding-left: 24px; margin-bottom: 12px;
+  font-size: 16px; line-height: 1.6; color: var(--text-2);
+}
+.lcc .blist li::before {
+  content: ""; position: absolute; left: 4px; top: 11px;
+  width: 8px; height: 8px; border-radius: 2px;
+  background: var(--accent, #7aa2f7); transform: rotate(45deg);
+}
+.lcc .blist li b, .lcc .blist li strong { color: var(--text-1); }
+
+/* ---------- timeline (horizontal learning path) ---------- */
+.lcc .path-line { display: flex; align-items: stretch; gap: 0; }
+.lcc .path-step {
+  flex: 1; padding: 14px 12px; position: relative;
+  background: var(--surface, #24283b);
+  border-top: 3px solid var(--accent, #7aa2f7);
+}
+.lcc .path-step + .path-step { border-left: 1px dashed var(--border); }
+.lcc .path-step .sid { font-family: var(--font-mono); font-size: 13px; font-weight: 800; color: var(--accent-3); }
+.lcc .path-step .stitle { font-size: 14px; font-weight: 600; color: var(--text-1); margin-top: 4px; }
+.lcc .path-step .sdesc { font-size: 12px; color: var(--text-3); margin-top: 4px; line-height: 1.45; }
+
+/* ---------- stage block (6 stages of the course) ---------- */
+.lcc .stage {
+  border-radius: 12px; padding: 16px 18px;
+  background: var(--surface, #24283b);
+  border: 1px solid var(--border);
+}
+.lcc .stage .sh {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  letter-spacing: .04em; margin-bottom: 10px;
+}
+.lcc .stage .sitem {
+  font-size: 14px; color: var(--text-2); line-height: 1.7;
+}
+.lcc .stage .sitem .sid { font-family: var(--font-mono); color: var(--accent-3); font-weight: 700; }
+.lcc .st1 .sh { color: #7aa2f7; }
+.lcc .st2 .sh { color: #9ece6a; }
+.lcc .st3 .sh { color: #e0af68; }
+.lcc .st4 .sh { color: #f7768e; }
+.lcc .st5 .sh { color: #bb9af7; }
+.lcc .st6 .sh { color: #7dcfff; }
+
+/* ---------- "vs" comparison (teaching vs Claude Code) ---------- */
+.lcc .vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: stretch; }
+.lcc .vs .mid {
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-weight: 800; font-size: 16px;
+  color: var(--text-3);
+}
+
+/* ---------- equation / formula block ---------- */
+.lcc .eq {
+  font-family: var(--font-mono, monospace);
+  font-size: clamp(18px, 2.2vw, 26px); line-height: 1.8;
+  background: var(--surface-2, #2f334d);
+  border: 1px solid var(--border); border-radius: 12px;
+  padding: 22px 28px; color: var(--text-1); white-space: pre-wrap;
+}
+.lcc .eq .plus { color: var(--accent-3); }
+.lcc .eq .eq { color: var(--accent); }
+.lcc .eq .arr { color: var(--warn); }
+
+/* ---------- section divider ---------- */
+.lcc .divider-slide { justify-content: center; align-items: flex-start; }
+.lcc .divider-num {
+  font-family: var(--font-mono); font-size: clamp(60px, 9vw, 130px);
+  font-weight: 800; line-height: 1; letter-spacing: -.04em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  margin-bottom: 16px;
+}
+
+/* ---------- KPI / stat ---------- */
+.lcc .kpi { text-align: center; }
+.lcc .kpi .v {
+  font-family: var(--font-mono); font-size: clamp(34px, 4.5vw, 60px);
+  font-weight: 800; line-height: 1; letter-spacing: -.02em;
+  background: var(--grad); -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.lcc .kpi .l { font-size: 14px; color: var(--text-3); margin-top: 8px; }
+
+/* ---------- ascii art (THE AGENT PATTERN box) ---------- */
+.lcc .ascii {
+  font-family: var(--font-mono, monospace); font-size: 13.5px; line-height: 1.55;
+  color: var(--text-2); white-space: pre; text-align: left;
+  background: #16161e; border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px 24px; overflow-x: auto;
+}
+
+/* ---------- tag row ---------- */
+.lcc .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.lcc .tag {
+  font-family: var(--font-mono); font-size: 12px; padding: 4px 11px;
+  border-radius: 999px; background: rgba(192,202,245,.07);
+  border: 1px solid var(--border); color: var(--text-2);
+}
+.lcc .tag.t-accent { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+/* ---------- deck footer / chrome ---------- */
+.lcc .deck-footer {
+  position: absolute; bottom: 22px; left: 40px; right: 40px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--text-3); z-index: 10; pointer-events: none;
+}
+.lcc .deck-footer .mono { background: none; padding: 0; color: var(--text-3); font-size: 12px; }
+
+/* helper: constrain content width for readability */
+.lcc .narrow { max-width: 880px; }
+.lcc .wide { max-width: 100%; }

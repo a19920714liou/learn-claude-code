@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-themes="tokyo-night,dracula,blueprint,corporate-clean">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Learn Claude Code · 真正的 Agent Harness 工程</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" id="theme-link" href="themes/tokyo-night.css">
+<link rel="stylesheet" href="animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="lcc">
+<div class="deck">
+
+  <!-- ================================================================
+       PART 0 · COVER & VISION  (slides 1-6)
+       ================================================================ -->
+
+  <!-- ============ 1. COVER ============ -->
+  <section class="slide" data-title="Cover">
+    <p class="kicker">learn-claude-code · 20 课递进式教程</p>
+    <h1 class="h1 anim-fade-up" data-anim="fade-up">
+      真正的<br>
+      <span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent">Agent Harness</span> 工程
+    </h1>
+    <p class="lede mt-m">
+      从一个 <span class="mono">while True</span> 循环，到完整的多 Agent 协作系统。
+      <br>20 个递进式课程，逐步拆解并重组 Claude Code 的全部 harness 机制。
+    </p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">Agent Loop</span>
+      <span class="tag">Tools</span>
+      <span class="tag">Permissions</span>
+      <span class="tag">Hooks</span>
+      <span class="tag">Subagent</span>
+      <span class="tag">Memory</span>
+      <span class="tag">Task DAG</span>
+      <span class="tag">Teams</span>
+      <span class="tag">MCP</span>
+    </div>
+    <div class="deck-footer">
+      <span class="mono">shareAI-lab/learn-claude-code</span>
+      <span>按 <b>S</b> 演讲者视图 · <b>T</b> 切换主题 · <b>← →</b> 翻页</span>
+    </div>
+    <aside class="notes">
+      <p>大家好，欢迎来到这次分享。今天我要带大家走一遍 <strong>learn-claude-code</strong> 这个开源教程——它用 20 节递进式课程，从零开始把 Claude Code 的整套架构拆开、重组。</p>
+      <p>但这门课的核心不是"教你怎么用 Claude Code"，而是回答一个更本质的问题——<em>一个能干活的 agent 产品，到底是由什么构成的？</em> 答案就是标题里的两个词：<strong>模型 + Harness（载具）</strong>。</p>
+      <p>这份 PPT 大概 55 页，我会一路从最基础的 agent loop 讲到多 agent 协作、再到 MCP 插件和终章综合。每一课都配了一句话格言和一个核心代码模式。</p>
+      <p>提醒一下，这是一个支持<em>演讲者模式</em>的 deck——按 <strong>S</strong> 键会弹出提词器窗口，里面有当前页、下一页预览、完整逐字稿和计时器。我接下来就是看着它讲的。好，我们开始。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 2. CORE THESIS ============ -->
+  <section class="slide" data-title="Agency vs Harness">
+    <p class="kicker">// 核心命题</p>
+    <h2 class="h2">Agency 来自模型，<br>Agent 产品 = <span class="accent">模型 + Harness</span></h2>
+    <div class="grid g2 mt-l">
+      <div class="card card-accent">
+        <h4>🧠 模型 = 驾驶者</h4>
+        <p>感知、推理、行动的能力（Agency）来自<strong>训练</strong>——数十亿次梯度更新，在行动序列数据上学会的。Agency 从来不是外面那层代码赋予的。</p>
+      </div>
+      <div class="card card-accent2">
+        <h4>🚗 Harness = 载具</h4>
+        <p>工具、知识、观测、行动接口、权限。模型做决策，harness 执行；模型做推理，harness 提供上下文。本仓库教你造载具。</p>
+      </div>
+    </div>
+    <div class="eq mt-l">Agent <span class="eq">=</span> 模型 (LLM) <span class="plus">+</span> 泛化的操作环境 (Harness)</div>
+    <aside class="notes">
+      <p>在写任何一行代码之前，必须先把这件事说清楚——这是整门课的地基。</p>
+      <p>左边那张卡片：<strong>Agency 来自模型训练</strong>。一个神经网络，在行动序列数据上学习，慢慢学会了感知环境、推理目标、采取行动。这个东西不是你写代码写出来的，是模型自己学出来的。</p>
+      <p>右边那张卡片：<strong>但光有模型不够，还得有 harness</strong>。模型是驾驶者，harness 是载具。一个编程 agent 的 harness 是 IDE、终端、文件系统；一个农业 agent 的 harness 是土壤传感器和灌溉控制。</p>
+      <p>底下这个公式要记住：<em>Agent = 模型 + 泛化的操作环境</em>。模型跨领域泛化，harness 因领域而变。这门课教的是怎么造编程领域的载具，但设计模式可以泛化到任何领域。</p>
+      <p>所以我们作为工程师的工作是什么？<strong>不是编写智能，而是构建智能栖居的世界</strong>。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 3. AGENCY IS TRAINED (history proof) ============ -->
+  <section class="slide" data-title="Agency 历史">
+    <p class="kicker">// 铁证 · Agency 是训练出来的</p>
+    <h2 class="h2">历史已经写好了<span class="accent">铁证</span></h2>
+    <div class="grid g2 mt-l">
+      <div class="feat"><span class="n cyan">13</span><div><b>2013 · DeepMind DQN 玩 Atari</b><p>一个网络只看像素和分数，学会 7 款游戏，3 款击败人类专家。没有游戏专属规则——<em>那个模型就是 agent</em>。</p></div></div>
+      <div class="feat"><span class="n cyan">19</span><div><b>2019 · OpenAI Five 征服 Dota 2</b><p>5 个网络自我对弈了 4.5 万年，2-0 击败世界冠军 OG。没有脚本化策略，模型学会了团队协作。</p></div></div>
+      <div class="feat"><span class="n cyan">19</span><div><b>2019 · AlphaStar 制霸星际 II</b><p>10-1 击败职业选手，达到宗师段位（前 0.15%）。信息不完全、实时决策、组合动作空间远超围棋。</p></div></div>
+      <div class="feat"><span class="n cyan">19</span><div><b>2019 · 腾讯绝悟统治王者</b><p>5v5 击败 KPL 职业选手；1v1 下职业选手 15 场只赢 1 场。训练强度：一天等于人类 440 年。</p></div></div>
+    </div>
+    <p class="dim2 mt-m" style="font-size:15px">→ 2024-25：LLM agent 重塑软件工程。架构完全相同——一个训练好的模型 + 一个环境。</p>
+    <aside class="notes">
+      <p>有人可能觉得"agency 来自模型"这话太绝对。那我们看历史。</p>
+      <p><strong>2013 年，DeepMind 的 DQN 玩 Atari</strong>。一个神经网络，只接收原始像素和游戏分数，没有任何游戏规则，自己学会了 7 款游戏，在其中 3 款上击败人类专家。那个模型本身，就是 agent。</p>
+      <p><strong>2019 年是 agent 的大年</strong>。OpenAI Five，5 个网络自我对弈了 4.5 万年的 Dota 2，2 比 0 击败世界冠军 OG。没有写任何团队协作逻辑，模型自己学会了。AlphaStar 在星际争霸 2 上打到宗师段位，前 0.15%。腾讯绝悟在王者上，职业选手 1v1 打它，15 场只赢 1 场。</p>
+      <p>所有这些里程碑都指向同一个事实：<em>那个感知、推理、行动的能力，是训练出来的，不是编出来的</em>。每一个 agent 同时也需要一个环境才能工作——Atari 模拟器、Dota 客户端、IDE。模型给智能，环境给行动空间。</p>
+      <p>记住这条，后面的课你才不会跑偏。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 4. WHAT AGENT IS NOT ============ -->
+  <section class="slide" data-title="Agent 不是什么">
+    <p class="kicker">// 一个被劫持的词</p>
+    <h2 class="h2">"Agent" 不是什么</h2>
+    <div class="card card-soft mt-l" style="border-left:4px solid var(--bad)">
+      <p style="font-size:17px;color:var(--text-1)">
+        拖拽式工作流构建器、无代码 "AI Agent" 平台、提示词链编排库——它们共享同一个幻觉：
+        <strong style="color:var(--bad)">把 LLM API 调用用 if-else、节点图、硬编码路由串起来就算"构建 Agent"了。</strong>
+      </p>
+    </div>
+    <div class="grid g3 mt-l">
+      <div class="card">
+        <h4>❌ 那是什么</h4>
+        <p>鲁布·戈德堡机械——过度工程化、脆弱的过程式规则流水线，LLM 被楔进去当一个美化的文本补全节点。</p>
+      </div>
+      <div class="card">
+        <h4>💀 为什么死</h4>
+        <p>从诞生之日起就死了：脆弱、不可扩展、根本不泛化。是 GOFAI 经典符号 AI 的现代还魂。</p>
+      </div>
+      <div class="card">
+        <h4>🔑 心智转换</h4>
+        <p>从"开发 Agent"→ <strong>开发 Harness</strong>。你的工作是造载具，不是编写智能。</p>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>这一页我要泼点冷水。<strong>"Agent" 这个词现在已经被一整个提示词水管工产业劫持了</strong>。</p>
+      <p>你看到市面上那些拖拽式工作流构建器、无代码 AI Agent 平台、提示词链编排库——它们本质上都共享一个幻觉：以为把 LLM 的 API 调用，用一堆 if-else 分支、节点图、硬编码的路由逻辑串起来，就算是在"构建 Agent"了。</p>
+      <p>不是的。它们做出来的东西，是鲁布·戈德堡机械——就是那种过度复杂、极度脆弱的过程式规则流水线，LLM 被塞在里面，当一个美化了的文本补全节点。那不是 Agent，那是一个有着宏大妄想的 shell 脚本。</p>
+      <p>这些系统从诞生的第一天起就已经死了：<em>脆弱、不可扩展、根本不具备泛化能力</em>。它们其实是几十年前学界就抛弃的符号规则 AI，喷了一层 LLM 的漆又回来了。</p>
+      <p>所以心智转换是什么？<strong>从"开发 Agent"，转到"开发 Harness"</strong>。你是 harness 工程师，你的工作是造载具，不是编写智能。Agency 你编不出来，但你可以给它造一个舒服的工作环境。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 5. HARNESS = formula ============ -->
+  <section class="slide" data-title="Harness 是什么">
+    <p class="kicker">// Harness 工程师到底在做什么</p>
+    <h2 class="h2">Harness 是 agent 工作所需的<span class="accent">一切</span></h2>
+    <div class="eq mt-m">Harness <span class="eq">=</span> Tools <span class="plus">+</span> Knowledge <span class="plus">+</span> Observation <span class="plus">+</span> Action <span class="plus">+</span> Permissions</div>
+    <div class="grid g3 mt-l" style="gap:14px">
+      <div class="card"><h4 class="cyan">🛠 Tools</h4><p>文件读写、Shell、网络、浏览器。每个工具是 agent 能采取的一个行动——<em>原子化、可组合、描述清晰</em>。</p></div>
+      <div class="card"><h4 class="cyan">📚 Knowledge</h4><p>产品文档、领域资料、API 规范。按需加载（s07），不要前置塞入。</p></div>
+      <div class="card"><h4 class="cyan">👁 Observation</h4><p>git diff、错误日志、运行时状态。让 agent 看得清自己做了什么。</p></div>
+      <div class="card"><h4 class="cyan">⚡ Action</h4><p>CLI 命令、API 调用、UI 交互。把决策落到真实环境。</p></div>
+      <div class="card"><h4 class="cyan">🔒 Permissions</h4><p>沙箱隔离、审批流程、信任边界。安全工程与 harness 的交汇点。</p></div>
+      <div class="card card-accent"><h4>🎯 你的工作</h4><p>构建<strong>智能栖居的世界</strong>。这个世界的质量，直接决定智能能多有效表达。</p></div>
+    </div>
+    <aside class="notes">
+      <p>那 harness 工程师到底在干嘛？先把 harness 拆开看。</p>
+      <p>它就是这五个东西的加和——<strong>工具、知识、观测、行动接口、权限</strong>。</p>
+      <p>工具，是给 agent 一双手：文件读写、Shell、网络、浏览器。设计时要原子化、可组合、描述清晰。</p>
+      <p>知识，是给 agent 领域专长。重点是要<em>按需加载</em>，不要一股脑塞进 prompt——这是 s07 的主题。</p>
+      <p>观测，是让 agent 看得见自己的行为后果：git diff、错误日志、运行时状态。</p>
+      <p>行动，是把决策真正落到环境里；权限，是给它划边界——破坏性操作要审批，这就是 s03。</p>
+      <p>右下角那张卡片是总结：<strong>你不是在编写智能，你是在构建智能栖居的世界</strong>。这个世界的质量——agent 能看得多清楚、行动得多精准、可用知识有多丰富——直接决定了智能能多有效地表达自己。</p>
+      <p>造好 harness，agent 会完成剩下的。这 20 课，就是把这五个字挨个讲透。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 6. THE AGENT PATTERN (ascii) ============ -->
+  <section class="slide" data-title="THE AGENT PATTERN">
+    <p class="kicker">// 最小循环 · 每个 AI Agent 都需要它</p>
+    <h2 class="h2">THE AGENT <span class="accent">PATTERN</span></h2>
+<div class="ascii mt-m">
+User --&gt; messages[] --&gt; LLM --&gt; response
+                                  |
+                        stop_reason == "tool_use"?
+                       /                          \
+                     yes                           no
+                      |                             |
+                execute tools                    return text
+                append results
+                loop back -----------------&gt; messages[]
+</div>
+    <div class="grid g3 mt-l" style="gap:14px">
+      <div class="card card-accent"><h4>① 模型决定</h4><p>何时调用工具、何时停止——这是模型的判断，不是代码的硬编码。</p></div>
+      <div class="card card-accent"><h4>② 代码执行</h4><p>代码只是执行模型的要求：拿到 tool_use block，跑对应 handler，把结果塞回去。</p></div>
+      <div class="card card-accent"><h4>③ 循环不变</h4><p>后面 19 课都在这个循环之上叠机制——循环本身始终不变。循环属于 agent，机制属于 harness。</p></div>
+    </div>
+    <aside class="notes">
+      <p>好，重头戏来了。这一页是整门课的锚点——<strong>THE AGENT PATTERN</strong>。</p>
+      <p>看这个流程图。用户输入变成 messages 数组，发给 LLM，LLM 回一个 response。然后关键的分叉出现了：检查 <span class="mono">stop_reason</span> 是不是等于 <span class="mono">tool_use</span>。如果是 yes，就执行工具、把结果 append 回去、loop 回去再问一次；如果是 no，就返回文本，结束。</p>
+      <p>就这么简单。这是最小循环，<em>每个 AI Agent 都需要这个循环</em>。</p>
+      <p>下面三张卡片讲清楚分工：<strong>第一，模型决定</strong>——什么时候调工具、什么时候停，是模型在判断，不是代码在硬编码。 <strong>第二，代码只是执行</strong>——拿到 tool_use block，找到对应的 handler 跑一下，把结果塞回 messages。<strong>第三，也是最重要的</strong>——后面 19 课都在这个循环之上叠加 harness 机制，但这个 while True 循环本身，<em>从 s01 到 s20 始终不变</em>。</p>
+      <p>记住这张图，后面所有的机制你都能找到它挂在这张图的哪个位置。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 7. COURSE MAP / LEARNING PATH ============ -->
+  <section class="slide" data-title="学习路径">
+    <p class="kicker">// 20 课 · 6 个阶段 · 每课一个机制</p>
+    <h2 class="h2">从能动手 → 能协作 → 能合体</h2>
+    <div class="grid g3 mt-l" style="gap:14px">
+      <div class="stage st1">
+        <div class="sh">🌱 阶段 1 · 让 Agent 能动手</div>
+        <div class="sitem"><span class="sid">s01</span> Agent Loop · 一个循环 + bash</div>
+        <div class="sitem"><span class="sid">s02</span> Tool Use · 工具分发 map</div>
+        <div class="sitem"><span class="sid">s03</span> Permission · 执行前划边界</div>
+        <div class="sitem"><span class="sid">s04</span> Hooks · 挂在循环上</div>
+      </div>
+      <div class="stage st2">
+        <div class="sh">🌿 阶段 2 · 做复杂任务</div>
+        <div class="sitem"><span class="sid">s05</span> TodoWrite · 先计划再执行</div>
+        <div class="sitem"><span class="sid">s06</span> Subagent · 干净上下文</div>
+        <div class="sitem"><span class="sid">s08</span> Context Compact · 腾地方</div>
+      </div>
+      <div class="stage st3">
+        <div class="sh">🍂 阶段 3 · 记住和恢复</div>
+        <div class="sitem"><span class="sid">s09</span> Memory · 记该记的</div>
+        <div class="sitem"><span class="sid">s10</span> System Prompt · 运行时组装</div>
+        <div class="sitem"><span class="sid">s11</span> Error Recovery · 重试换路</div>
+      </div>
+      <div class="stage st4">
+        <div class="sh">⚙️ 阶段 4 · 长期运行</div>
+        <div class="sitem"><span class="sid">s12</span> Task System · 任务落盘记依赖</div>
+        <div class="sitem"><span class="sid">s13</span> Background Tasks · 慢操作丢后台</div>
+        <div class="sitem"><span class="sid">s14</span> Cron Scheduler · 定时触发</div>
+      </div>
+      <div class="stage st5">
+        <div class="sh">🤝 阶段 5 · 多 Agent 协作</div>
+        <div class="sitem"><span class="sid">s15</span> Agent Teams · 队友 + 邮箱</div>
+        <div class="sitem"><span class="sid">s16</span> Team Protocols · 收发约定</div>
+        <div class="sitem"><span class="sid">s17</span> Autonomous · 自己看板认领</div>
+        <div class="sitem"><span class="sid">s18</span> Worktree Isolation · 各干各目录</div>
+      </div>
+      <div class="stage st6">
+        <div class="sh">🔌 阶段 6 · 接外部合体</div>
+        <div class="sitem"><span class="sid">s07</span> Skill Loading · 按需加载</div>
+        <div class="sitem"><span class="sid">s19</span> MCP Plugin · 标准协议接入</div>
+        <div class="sitem"><span class="sid">s20</span> Comprehensive · 全机制回单循环</div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>在看每一课的细节之前，先给大家一张全景图——<strong>整个 20 课是怎么组织的</strong>。</p>
+      <p>主线就一句话：<em>能动手 → 能做复杂任务 → 能记住恢复 → 能长期运行 → 能协作 → 能扩展合体</em>。分成 6 个阶段，我用颜色区分了。</p>
+      <p>阶段 1 是基础：agent loop、工具、权限、hooks——让 agent 先能动起来。阶段 2 是复杂任务：todo 规划、子 agent、上下文压缩。阶段 3 是韧性：记忆、系统提示词组装、错误恢复。阶段 4 让它长期跑：任务系统、后台任务、cron。阶段 5 是多 agent 协作：团队、协议、自治、worktree 隔离。阶段 6 收尾：技能加载、MCP 插件、终章把所有机制拼回去。</p>
+      <p>注意 <strong>s07 放在最后讲</strong>，因为技能加载本质是个"接外部能力"的机制，跟 MCP 一类。还有 <strong>s08 顺序上靠前</strong>，因为它和子 agent 配合最紧。接下来我们就一个阶段一个阶段往下走。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 8. SECTION DIVIDER · 阶段 1 ============ -->
+  <section class="slide divider-slide" data-title="阶段1">
+    <p class="kicker part-tag">// 阶段 1 · 基础能力</p>
+    <div class="divider-num">s01 — s04</div>
+    <h2 class="h2">让 Agent <span class="accent">能动手</span></h2>
+    <p class="lede" style="max-width:680px">一个循环 + bash，就是一个能用的 agent。<br>再叠上工具分发、权限判断、hook 扩展点——基础四件套，循环一行没动。</p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">s01 Agent Loop</span>
+      <span class="tag t-accent">s02 Tool Use</span>
+      <span class="tag t-accent">s03 Permission</span>
+      <span class="tag t-accent">s04 Hooks</span>
+    </div>
+    <aside class="notes">
+      <p>好，正式进入第一部分——<strong>阶段 1，让 agent 能动手</strong>。</p>
+      <p>这部分四课：s01 先搭出最小循环，s02 把单工具扩成多工具，s03 给执行加权限门，s04 把各种检查抽成 hook。注意一个贯穿始终的点——<em>循环本身从头到尾一行没改</em>，所有新机制都是挂在外面的。</p>
+      <p>走完这四课，你就有了一个"能干活、有边界、可扩展"的单 agent 雏形。后面所有的高级机制都是在这个雏形上加东西。我们开始 s01。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 9. s01 AGENT LOOP — concept ============ -->
+  <section class="slide" data-title="s01 Agent Loop">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s01</span> <span>AGENT LOOP</span> <span class="layer-pill">循环 · 模型与真实世界的第一道连接</span></div>
+      <h2 class="h2">一个循环 &amp; Bash <span class="accent">is all you need</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>一个工具 + 一个循环 = 一个 Agent<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">痛点</h3>
+        <p class="dim">模型能"说出"一条 bash 命令，但它<strong>不会自己运行</strong>——得有人复制到终端、跑、把输出贴回去。把这个人自动化掉，就是 agent loop。</p>
+        <h3 class="h3 mt-m">两个信号驱动一切</h3>
+        <ul class="blist mt-s">
+          <li><b class="cyan">stop_reason == "tool_use"</b> → 执行工具，喂回结果，继续循环</li>
+          <li><b class="green">否则</b> → 返回文本，结束</li>
+        </ul>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s01 · 最小 agent harness（&lt;30 行）</span>
+<span class="k">def</span> <span class="f">agent_loop</span>(messages):
+    <span class="k">while</span> <span class="b">True</span>:
+        resp = client.messages.create(
+            model=MODEL, system=SYSTEM,
+            messages=messages, tools=TOOLS)
+        messages.append({<span class="s">"role"</span>:<span class="s">"assistant"</span>,
+                         <span class="s">"content"</span>: resp.content})
+
+        <span class="k">if</span> resp.stop_reason != <span class="s">"tool_use"</span>:
+            <span class="k">return</span>
+
+        results = [<span class="f">run_bash</span>(b.input[<span class="s">"cmd"</span>])
+                   <span class="k">for</span> b <span class="k">in</span> resp.content
+                   <span class="k">if</span> b.type == <span class="s">"tool_use"</span>]
+        messages.append({<span class="s">"role"</span>:<span class="s">"user"</span>,
+                         <span class="s">"content"</span>: results})</div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s01，整门课的起点。格言是——<strong>一个工具 + 一个循环 = 一个 agent</strong>。</p>
+      <p>先说痛点。你跟 LLM 聊天，它说"你可以跑一下 ls -la 看看"。但模型自己<strong>不会跑这条命令</strong>——它只是输出了文字。你得手动复制到终端、执行、再把输出复制回对话框。这个"人工中转"就是最大的摩擦。</p>
+      <p>把它自动化掉，就是 agent loop。整个循环就靠两个信号驱动：第一，看 LLM 返回的 <span class="mono">stop_reason</span> 是不是 <span class="mono">tool_use</span>——如果是，说明它想调工具，那就执行工具、把结果塞回 messages，继续循环；如果不是，说明它要直接回答，那就返回文本结束。</p>
+      <p>看右边这段代码，不到 30 行，就是一个能跑的 agent 内核。注意模型决定"调什么、调不调"，代码只负责"执行、喂回去"。</p>
+      <p>顺便提一句——Claude Code 真实的 query.ts 有 1729 行，但核心还是这 30 行的循环，剩下的全是各种保护机制。这也是后面 19 课要讲的东西。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 10. s01 — CC deep dive ============ -->
+  <section class="slide" data-title="s01 教学版 vs Claude Code">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s01</span> <span>深入 Claude Code 源码</span></div>
+      <h2 class="h3">教学版 30 行 vs 生产 1729 行，差在哪？</h2>
+    </div>
+    <div class="vs mt-l">
+      <div class="card card-soft">
+        <h4 class="cyan">教学版</h4>
+        <ul class="blist">
+          <li>信任 <span class="mono">stop_reason</span></li>
+          <li>State 就是 <span class="mono">messages</span> 一个数组</li>
+          <li>串行执行工具</li>
+          <li>没有恢复 / 压缩 / 计数</li>
+        </ul>
+      </div>
+      <div class="mid">vs</div>
+      <div class="card card-accent2">
+        <h4 class="purple">Claude Code</h4>
+        <ul class="blist">
+          <li>用 <span class="mono">needsFollowUp</span> 主动扫 tool_use block——<em>流式下 stop_reason 不可靠</em></li>
+          <li>State 对象有 <strong>10 个字段</strong>（turnCount、recovery 计数、压缩追踪…）</li>
+          <li>工具可并发（s02）</li>
+          <li>完整错误恢复（s11）+ 上下文压缩（s08）</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card mt-l card-accent">
+      <p><b class="accent">启示：</b>核心循环极其简单，复杂度全在"保护机制"上。这 19 课教的，就是一层一层把这些保护机制加回去。</p>
+    </div>
+    <aside class="notes">
+      <p>这一页我们做个对比——教学版的 30 行循环，和 Claude Code 真实的 1729 行，到底差在哪？</p>
+      <p>左边教学版做了几个简化：第一，它信任 stop_reason 字段；第二，整个 state 就是一个 messages 数组；第三，工具串行执行；第四，没有任何错误恢复和压缩。</p>
+      <p>右边 Claude Code 就不一样了。最关键的一点——<strong>它不信 stop_reason</strong>，而是用 <span class="mono">needsFollowUp</span> 主动去扫 response 里有没有 tool_use block。为什么？因为流式输出下 stop_reason 不可靠。然后它的 State 对象有 10 个字段，追踪轮次、恢复次数、压缩状态这些。工具能并发，有完整错误恢复。</p>
+      <p>底下的启示要记住——<em>核心循环极其简单，复杂度全在保护机制上</em>。这 19 课要做的，就是一层一层把这些保护机制加回去。但不管加多少层，那个 while True 的骨架，从头到尾没变过。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 11. s02 TOOL USE ============ -->
+  <section class="slide" data-title="s02 Tool Use">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s02</span> <span>TOOL USE</span> <span class="layer-pill">工具分发 · 扩展模型能触达的边界</span></div>
+      <h2 class="h2">加一个工具，<span class="accent">只加一行</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>循环不用动，新工具注册进 dispatch map 就行<span class="q">”</span></div>
+    <div class="split l45 mt-l">
+      <div>
+        <h3 class="h3">为什么不能只有 bash</h3>
+        <p class="dim">只有 bash 时，"读文件"得翻译成 <span class="mono">cat</span>，"查找"得翻译成 <span class="mono">find</span>——<strong>浪费 token、翻译出错</strong>。专用工具去掉这层摩擦。</p>
+        <h3 class="h3 mt-m">加一个工具 = 两个入口</h3>
+        <ul class="blist mt-s">
+          <li><b class="cyan">TOOLS</b> 数组加一项（声明给模型）</li>
+          <li><b class="purple">TOOL_HANDLERS</b> 字典加一项（实现）</li>
+          <li><b class="green">循环一行没动</b></li>
+        </ul>
+        <p class="dim2 mt-m" style="font-size:14px">文件工具被 <span class="mono">safe_path</span> 保护；bash 仍未保护（留给 s03）。</p>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s02 · dispatch map 取代硬编码</span>
+TOOL_HANDLERS = {
+    <span class="s">"bash"</span>:       run_bash,
+    <span class="s">"read_file"</span>:  read_file,
+    <span class="s">"write_file"</span>: write_file,
+    <span class="s">"edit_file"</span>:  edit_file,
+    <span class="s">"glob"</span>:        glob,
+}
+
+<span class="c"># 主循环里——只换一行：</span>
+<span class="hl">output = TOOL_HANDLERS[block.name](**block.input)</span></div>
+        <div class="card card-soft mt-m">
+          <p><b class="orange">CC 进阶：</b>工具 5 步校验管线 = Zod schema → validateInput → PreToolUse hooks → permission → call()。并发靠 <span class="mono">isConcurrencySafe(input)</span> 按输入判断，连续安全工具并行成批。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s02。格言——<strong>加一个工具，只加一行</strong>。</p>
+      <p>先问个问题：s01 只有 bash，不是也能干活吗，为什么还要别的工具？因为只有 bash 的时候，模型说"读一下那个文件"，它得自己翻译成 cat 命令；说"找一下所有 py 文件"，它得翻译成 find。这就<strong>既浪费 token，又容易翻译出错</strong>。给它专用的 read_file、glob 工具，就去掉了这层摩擦。</p>
+      <p>那怎么加？非常简单。看右边代码：你维护一个 <span class="mono">TOOL_HANDLERS</span> 字典，工具名映射到函数。加一个新工具，就是在 TOOLS 数组里声明一项、在 handlers 字典里加一项——<em>主循环一行都不用改</em>，循环里那行高亮的 dispatch 不变。</p>
+      <p>这里文件工具已经被 safe_path 保护了，但 bash 还是裸的——这个坑留给 s03。底下那张卡片提了 Claude Code 的进阶：它有个 5 步校验管线，并发是按输入判断的，连续安全的工具会并行成批执行。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 12. s03 PERMISSION ============ -->
+  <section class="slide" data-title="s03 Permission">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s03</span> <span>PERMISSION</span> <span class="layer-pill">权限 · 工具执行前的一道门</span></div>
+      <h2 class="h2">先划边界，<span class="accent">再给自由</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>工具执行前先做权限判断——安全靠代码，不靠模型信任<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">痛点</h3>
+        <p class="dim">s02 的 bash 没限制。模型说"清理一下项目"，它可能真的跑 <span class="mono">rm -rf /</span>。<strong>安全必须靠代码保证，不能靠模型自觉。</strong></p>
+        <h3 class="h3 mt-m">三道门，固定顺序</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:8px 0"><span class="n red">①</span><div><b>deny 名单</b><p>命中直接拦下，硬拒绝。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n orange">②</span><div><b>规则匹配</b><p>命中则升级到门 ③（上下文相关）。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n blue">③</span><div><b>用户审批</b><p>弹出来问：allow / deny。</p></div></div>
+        </div>
+        <p class="dim2 mt-s" style="font-size:14px">都不命中 → 直接执行。日常 90% 操作直通。</p>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s03 · 循环里只多一行</span>
+<span class="k">for</span> block <span class="k">in</span> resp.content:
+    <span class="k">if</span> block.type == <span class="s">"tool_use"</span>:
+        <span class="hl"><span class="f">check_permission</span>(block)  <span class="c"># ← 新增</span></span>
+        out = TOOL_HANDLERS[block.name](**block.input)
+        results.append({<span class="s">"type"</span>:<span class="s">"tool_result"</span>,
+            <span class="s">"tool_use_id"</span>: block.id, <span class="s">"content"</span>: out})</div>
+        <div class="card card-soft mt-m">
+          <p><b class="purple">CC 进阶：</b>4 种结果（allow/deny/ask/passthrough）；规则来自 <strong>8 个来源</strong>按优先级合并；子 agent 权限模式 <span class="mono">'bubble'</span>——弹窗冒泡到父终端。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s03，权限。格言——<strong>先划边界，再给自由</strong>。</p>
+      <p>为什么要权限？回到 s02，那个 bash 工具是完全没限制的。模型如果说"帮我清理一下项目"，它完全可能直接跑 <span class="mono">rm -rf</span>。这种事<strong>必须靠代码拦住，不能靠模型自觉</strong>——模型再聪明，也不能把安全寄托在它"这次不会犯错"上。</p>
+      <p>做法是三道门，按固定顺序走。第一道 deny 名单，命中直接拦；第二道规则匹配，命中就升级到第三道；第三道是用户审批，弹出来问你 allow 还是 deny。如果三道门都没命中，就放行——所以日常 90% 的读操作都是直通的，只有少数操作会停下来问你。</p>
+      <p>实现上特别优雅，看右边——主循环里只多了一行 <span class="mono">check_permission(block)</span>。</p>
+      <p>Claude Code 比这复杂：4 种结果而不是 3 种，规则来自 8 个来源按优先级合并。还有一个亮点——子 agent 的权限模式叫 bubble，意思是它需要审批时，弹窗会冒泡到父 agent 的终端去问。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 13. s04 HOOKS ============ -->
+  <section class="slide" data-title="s04 Hooks">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s04</span> <span>HOOKS</span> <span class="layer-pill">扩展点 · 不侵入循环</span></div>
+      <h2 class="h2">挂在循环上，<span class="accent">不写进循环里</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>hook 在工具执行前后注入逻辑——循环稳定，扩展挂外面<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <h3 class="h3">痛点</h3>
+        <p class="dim">每加一个检查（日志、权限、git add、通知）就往循环里塞 if——循环很快膨胀。正确的做法：<strong>循环保持稳定，扩展挂在循环外</strong>。</p>
+        <h3 class="h3 mt-m">四个事件覆盖 agent 周期</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n cyan">⤴</span><div><b>UserPromptSubmit</b><p>用户输入校验 / 注入上下文</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">⏺</span><div><b>PreToolUse</b><p>权限判断、日志（s03 搬到这里）</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n green">⤵</span><div><b>PostToolUse</b><p>副作用、输出检查</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n purple">⏹</span><div><b>Stop</b><p>收尾；CC 支持 force-continue</p></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s04 · hook 注册表</span>
+HOOKS = defaultdict(list)   <span class="c"># event -&gt; [cb,...]</span>
+
+<span class="k">def</span> <span class="f">register_hook</span>(event, cb):
+    HOOKS[event].append(cb)
+
+<span class="k">def</span> <span class="f">trigger_hooks</span>(event, ctx):
+    <span class="k">for</span> cb <span class="k">in</span> HOOKS.get(event, []):
+        r = cb(ctx)
+        <span class="k">if</span> r <span class="k">is not None</span>:        <span class="c"># 非None=拦截</span>
+            <span class="k">return</span> r
+
+<span class="c"># s03 的权限，现在变成一个 hook：</span>
+register_hook(<span class="s">"PreToolUse"</span>, check_permission)</div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">返回值约定：</b><span class="mono">None</span> = 继续；非 None = PreToolUse 拦截 / Stop 强制继续。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s04，hooks。格言——<strong>挂在循环上，不写进循环里</strong>。</p>
+      <p>痛点很好理解。你每加一个检查——打个日志、做个权限、跑个 git add、发个通知——就往主循环里塞一个 if。塞几次循环就膨胀得没法看了。正确的设计是：<em>循环保持稳定，所有扩展挂在循环外面</em>。</p>
+      <p>hook 就是干这个的。左边四个事件覆盖了 agent 的整个生命周期：用户提交、工具执行前、工具执行后、停止。你想插什么逻辑，注册一个回调就行。</p>
+      <p>右边代码看实现——一个 HOOKS 字典，事件名映射到回调列表。关键是返回值约定：返回 None 表示"我没事，继续"；返回非 None，在 PreToolUse 里就是拦截，在 Stop 里就是强制继续。</p>
+      <p>这里有个漂亮的重构——<strong>s03 那个 check_permission，现在整个搬成了一个 PreToolUse hook</strong>。主循环里那行权限检查可以删掉了，完全解耦。这就是 hook 的价值：能力在涨，循环不变。</p>
+      <p>Claude Code 实际有 27 个 hook 事件，覆盖工具、会话、子 agent、压缩、团队各种场景。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 14. s05 TODOWRITE ============ -->
+  <section class="slide" data-title="s05 TodoWrite">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s05</span> <span>TODOWRITE</span> <span class="layer-pill">规划 · 动手前先想清楚</span></div>
+      <h2 class="h2">没有计划的 agent，<span class="accent">走着走着就偏了</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>先列步骤再动手，长任务完成率翻倍<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">为什么会偏</h3>
+        <p class="dim">长任务里，上下文被一堆 tool_result 填满，<strong>原始目标被稀释</strong>。一个 10 步重构，做到第 3 步时，第 4-10 步已经被挤出注意力窗口。</p>
+        <h3 class="h3 mt-m">todo_write 工具的特殊之处</h3>
+        <ul class="blist mt-s">
+          <li><b class="bad">不增加执行能力</b>——它不能读、不能跑，只是个内存里的状态清单</li>
+          <li><b class="green">只增加规划能力</b>——pending / in_progress / completed</li>
+          <li><b class="orange">nag 提醒</b>：连续 3 轮没调它，注入"更新你的 todos"</li>
+        </ul>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s05 · 典型流程</span>
+todo_write([
+  {<span class="s">"subject"</span>: <span class="s">"读入口文件"</span>, <span class="s">"status"</span>: <span class="s">"in_progress"</span>},
+  {<span class="s">"subject"</span>: <span class="s">"定位 bug"</span>,     <span class="s">"status"</span>: <span class="s">"pending"</span>},
+  {<span class="s">"subject"</span>: <span class="s">"写修复"</span>,      <span class="s">"status"</span>: <span class="s">"pending"</span>},
+  {<span class="s">"subject"</span>: <span class="s">"跑测试"</span>,      <span class="s">"status"</span>: <span class="s">"pending"</span>},
+])
+<span class="c"># ... 干完一步就回来更新 status ...</span></div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">CC 双系统并存：</b>TodoWrite（V1，内存 AppState）+ Task System（V2=s12，落盘 DAG），由 <span class="mono">isTodoV2Enabled()</span> 切换。真正的"nag"：当 3+ 任务都完成但没验证项时，追加验证提醒。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s05，TodoWrite。格言——<strong>没有计划的 agent，走着走着就偏了</strong>。</p>
+      <p>为什么 agent 会偏？长任务里，上下文被一堆工具结果填满，最开始那个目标就被稀释了。比如一个 10 步的重构，agent 做到第 3 步的时候，第 4 到 10 步可能已经被挤出注意力窗口了——它就忘了后面还要干嘛。</p>
+      <p>todo_write 这个工具很特别——它<strong>不增加任何执行能力</strong>，它不能读文件、不能跑命令，它就是一个内存里的状态清单，带 pending、in_progress、completed 三个状态。它增加的是<em>规划能力</em>。</p>
+      <p>用法看右边——先把所有步骤列出来，标一个 in_progress，干完一步回来更新。还有个 nag 提醒机制：如果连续 3 轮 agent 都没调 todo_write，就给它注入一条"该更新你的 todos 了"的消息。</p>
+      <p>底下提了 Claude Code 的细节：它其实有<strong>两套并行的任务系统</strong>——V1 就是这个内存 TodoWrite，V2 是 s12 要讲的落盘 Task System，两套用一个开关切。这说明：规划是个被反复打磨的核心能力。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 15. SECTION DIVIDER · 阶段 2+3 ============ -->
+  <section class="slide divider-slide" data-title="阶段2-3">
+    <p class="kicker part-tag">// 阶段 2-3 · 复杂任务 + 记住恢复</p>
+    <div class="divider-num">s06 — s11</div>
+    <h2 class="h2">上下文隔离、知识、压缩、<span class="accent">记忆与韧性</span></h2>
+    <p class="lede" style="max-width:680px">agent 会干活后，下一个瓶颈是<strong>注意力</strong>。<br>子 agent 隔离噪声、技能按需加载、四层压缩腾地方、记忆跨会话存活、错误能恢复。</p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">s06 Subagent</span>
+      <span class="tag t-accent">s08 Context Compact</span>
+      <span class="tag t-accent">s09 Memory</span>
+      <span class="tag t-accent">s10 System Prompt</span>
+      <span class="tag t-accent">s11 Error Recovery</span>
+    </div>
+    <aside class="notes">
+      <p>进入第二部分——<strong>阶段 2 和 3，让 agent 能做复杂任务、能记住和恢复</strong>。</p>
+      <p>这部分的核心矛盾是：<em>agent 能干活了，但它的注意力是有限的</em>。上下文窗口会被工具结果填满，原始目标会稀释，新会话会失忆，API 会报错。这几课就是解决这些问题的。</p>
+      <p>s06 子 agent 把大任务拆开、每个用干净的上下文；s08 四层压缩腾地方；s09 记忆跨压缩跨会话存活；s10 系统提示词运行时组装；s11 错误恢复让 agent 不至于一报错就死。我们一课一课来。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 16. s06 SUBAGENT ============ -->
+  <section class="slide" data-title="s06 Subagent">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s06</span> <span>SUBAGENT</span> <span class="layer-pill">子 Agent · 上下文隔离</span></div>
+      <h2 class="h2">大任务拆小，<span class="accent">每个拿到的都是干净上下文</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>子 agent 用独立 messages[]，不污染主对话<span class="q">”</span></div>
+    <div class="split l45 mt-l">
+      <div>
+        <h3 class="h3">痛点</h3>
+        <p class="dim">修 bug 时为了追调用链读了 30 个文件——上下文被污染，agent <strong>忘了原始问题</strong>。像"开个新终端"去调查，关掉，只把结论带回来。</p>
+        <h3 class="h3 mt-m">task 工具 · 四个设计决策</h3>
+        <ul class="blist mt-s">
+          <li><b class="cyan">全新 messages[]</b>——隔离，不继承历史</li>
+          <li><b class="green">只返回结论</b>——<span class="mono">extract_text(last_message)</span>，不带回整个列表</li>
+          <li><b class="bad">禁止递归</b>——子 agent 没有 task 工具</li>
+          <li><b class="orange">安全 hook 仍然生效</b>——权限不因隔离而失效</li>
+        </ul>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s06 · 派生子 agent</span>
+<span class="k">def</span> <span class="f">spawn_subagent</span>(description):
+    sub_messages = [{<span class="s">"role"</span>:<span class="s">"user"</span>,
+                     <span class="s">"content"</span>: description}]
+    <span class="k">for</span> _ <span class="k">in</span> <span class="f">range</span>(MAX_ROUNDS):  <span class="c"># 30轮上限</span>
+        resp = client.messages.create(
+            system=SUB_SYSTEM,       <span class="c"># 自己的prompt</span>
+            messages=sub_messages,
+            tools=SUB_TOOLS)         <span class="c"># 无 task 工具</span>
+        sub_messages.append(resp)
+        <span class="k">if</span> resp.stop_reason != <span class="s">"tool_use"</span>:
+            <span class="k">return</span> <span class="f">extract_text</span>(
+                sub_messages[-<span class="n">1</span>])  <span class="c"># 只返回文字结论</span>
+        sub_messages.append(<span class="f">run_tools</span>(resp))</div>
+        <div class="card card-soft mt-m">
+          <p><b class="purple">CC 三种模式：</b>① Normal 全新 messages；② <strong>Fork</strong> 共享 prompt cache（字节级一致前缀）；③ General-purpose。还有 <span class="mono">run_in_background</span> 异步路径（s13 讲）。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s06，子 agent。格言——<strong>大任务拆小，每个拿到的都是干净上下文</strong>。</p>
+      <p>痛点很常见。你在让 agent 修一个 bug，它为了追调用链去读了 30 个文件。读完之后，这 30 个文件的内容全塞在上下文里，把原始问题挤没了——agent 忘了自己一开始要干嘛。这就像你在终端里查东西，查着查着迷失了。</p>
+      <p>解法就是子 agent——像"开个新终端"一样，把调查任务派出去，子 agent 用干净的上下文去干，干完<strong>只把结论带回来</strong>，中间读的那些文件全丢弃。</p>
+      <p>四个设计决策记一下：第一，全新 messages 数组，不继承历史；第二，只返回最后一条的文字结论，不把整个 messages 列表带回来；第三，禁止递归——子 agent 没有 task 工具，不能再生子 agent；第四，虽然上下文隔离，但安全 hook 还是生效的，权限不会因为隔离而失效。</p>
+      <p>Claude Code 有三种模式，最值得一提的是 Fork 模式——它故意让父子 system prompt、tools、messages 前缀字节级一致，目的是命中 prompt cache，不是为了隔离。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 17. s08 CONTEXT COMPACT ============ -->
+  <section class="slide" data-title="s08 Context Compact">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s08</span> <span>CONTEXT COMPACT</span> <span class="layer-pill">压缩 · 干净的记忆，无限的会话</span></div>
+      <h2 class="h2">上下文总会满，<span class="accent">要有办法腾地方</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>四层压缩策略，便宜的先跑贵的后跑<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <div class="code-block"><span class="c"># 顺序很关键：budget 必须在 micro 之前</span>
+<span class="k">def</span> <span class="f">maybe_compact</span>(messages):
+    <span class="f">tool_result_budget</span>(messages)   <span class="c"># L3 先落盘大输出</span>
+    <span class="f">snip_compact</span>(messages)          <span class="c"># L1 丢中间</span>
+    <span class="f">micro_compact</span>(messages)         <span class="c"># L2 占位旧结果</span>
+    <span class="k">if</span> <span class="f">still_too_long</span>(messages):
+        <span class="f">compact_history</span>(messages)     <span class="c"># L4 LLM总结</span></div>
+        <p class="dim2 mt-s" style="font-size:13px">L1-L3 零 API 调用（纯文本/结构操作）；L4 才花 1 次调用。</p>
+      </div>
+      <div>
+        <div class="stack">
+          <div class="feat" style="padding:8px 0"><span class="n green">L1</span><div><b>snip_compact</b><p>丢掉中间消息，留头 3 条 + 尾 47 条。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n cyan">L2</span><div><b>micro_compact</b><p>旧的 tool_result 换成占位符，保留最近 3 条。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n orange">L3</span><div><b>tool_result_budget</b><p>&gt;200KB 的大输出落盘到 <span class="mono">.task_outputs/</span>，留预览。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n purple">L4</span><div><b>compact_history</b><p>LLM 完整总结，转写存 <span class="mono">.transcripts/</span>。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n red">⚠</span><div><b>reactive_compact</b><p>413 错误时的紧急压缩；重试 1 次后抛错（s11 兜底）。</p></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card card-accent mt-m"><p><b class="accent">为什么顺序重要：</b>budget（L3）必须在 micro（L2）之前跑——否则 micro 会先把大内容丢掉，还来不及落盘。熔断：连续 3 次压缩失败就停。</p></div>
+    <aside class="notes">
+      <p>s08，上下文压缩。这是比较难的一课。格言——<strong>上下文总会满，要有办法腾地方</strong>。</p>
+      <p>agent 读了一堆文件之后，prompt 会超长，API 直接返回 prompt_too_long 拒绝调用。不做压缩，agent 在大项目里根本没法干活。</p>
+      <p>解法是一个<strong>四层流水线，便宜的先跑，贵的后跑</strong>。从轻到重：</p>
+      <p>L1 snip_compact——直接丢掉中间消息，只留头 3 条和尾 47 条。L2 micro_compact——把旧的 tool_result 替换成占位符。L3 tool_result_budget——把超过 200KB 的大输出落盘到磁盘，只在上下文里留个预览。L4 compact_history——前面三层都不够用时，才花一次 API 调用，让 LLM 做完整总结。</p>
+      <p>注意 L1 到 L3 是<strong>零 API 调用</strong>的，纯文本和结构操作；只有 L4 才花钱。还有一个 reactive_compact 是 413 错误时的紧急兜底。</p>
+      <p>底下这张卡片特别重要——<em>顺序不能乱</em>。budget 必须在 micro 之前跑，否则 micro 会先把大内容丢了，你想落盘都来不及了。还有一个熔断机制：连续 3 次压缩失败就停，避免死循环。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 18. s09 MEMORY ============ -->
+  <section class="slide" data-title="s09 Memory">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s09</span> <span>MEMORY</span> <span class="layer-pill">记忆 · 跨压缩、跨会话</span></div>
+      <h2 class="h2">记住该记的，<span class="accent">忘掉该忘的</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>文件仓库 + 索引 + 按需加载——不参与压缩，跨会话存活<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <h3 class="h3">为什么压缩不够</h3>
+        <p class="dim">AutoCompact 会丢细节——"用户用 tabs 缩进"被压成"用户有风格偏好"。新会话连总结都没了。需要一层<strong>不参与压缩、跨会话存活</strong>的记忆。</p>
+        <h3 class="h3 mt-m">存储 + 索引</h3>
+        <ul class="blist mt-s">
+          <li><b class="cyan">.memory/*.md</b> 文件 + YAML frontmatter</li>
+          <li><b class="purple">MEMORY.md 索引</b>常驻 SYSTEM（可缓存）</li>
+          <li>内容按需注入当前 user turn</li>
+        </ul>
+        <h3 class="h3 mt-m">四个子系统</h3>
+        <div class="tags">
+          <span class="tag">storage 存储</span><span class="tag">loading 加载</span>
+          <span class="tag">extraction 提取</span><span class="tag">consolidation 整理</span>
+        </div>
+      </div>
+      <div>
+        <div class="stack">
+          <div class="feat" style="padding:8px 0"><span class="n cyan">①</span><div><b>加载路径 1</b><p>索引常驻 SYSTEM——agent 知道"有什么"。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n green">②</span><div><b>加载路径 2</b><p>每轮用轻量 LLM 侧查询选 ≤5 个相关文件；失败降级为关键词匹配。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n orange">③</span><div><b>提取</b><p>每轮结束（stop≠tool_use）时，LLM 返回 JSON，只在"真新"时写入。</p></div></div>
+          <div class="feat" style="padding:8px 0"><span class="n purple">④</span><div><b>整理（CC 叫 "Dream"）</b><p>文件数达阈值触发合并；CC 四层门控（24h 间隔/扫描节流/≥5 会话/文件锁）。</p></div></div>
+        </div>
+        <div class="card card-soft mt-m"><p><b class="accent2">四种类型：</b>user（用户偏好）/ feedback（反馈）/ project（项目）/ reference（参考资料）。</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s09，记忆。格言——<strong>记住该记的，忘掉该忘的</strong>。</p>
+      <p>为什么 s08 的压缩还不够？因为压缩会丢细节。比如"用户用 tabs 缩进"这种关键信息，压缩后可能变成"用户有风格偏好"——丢了具体内容。而且新开一个会话，连那个压缩总结都没了。</p>
+      <p>所以需要一层<strong>独立的记忆系统</strong>——它不参与压缩，跨会话存活。做法是文件仓库加索引：把记忆存成 .memory 目录下的 markdown 文件，每个带 YAML frontmatter；再维护一个 MEMORY.md 索引，常驻在 system prompt 里（这部分可缓存）。</p>
+      <p>关键设计是<em>两层加载</em>：第一层，索引永远在 system prompt，所以 agent 知道"我有哪些记忆"；第二层，真正用到时，用一次轻量 LLM 侧查询，选出不超过 5 个最相关的文件，把内容注入到当前用户消息里。这样既不会撑爆上下文，又能在需要时拿到细节。</p>
+      <p>还有提取和整理两个子系统。提取是每轮结束时让 LLM 判断"有没有值得记的新东西"，只在真新的时候才写。整理在 Claude Code 里叫"Dream"——像做梦一样，达到阈值就把碎片记忆合并成结构化的。</p>
+      <p>一个细节：Claude Code 用 Sonnet 模型自己来选记忆，不用 embedding——这个思路很巧。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 19. s10 SYSTEM PROMPT ============ -->
+  <section class="slide" data-title="s10 System Prompt">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s10</span> <span>SYSTEM PROMPT</span> <span class="layer-pill">提示 · 运行时组装</span></div>
+      <h2 class="h2">prompt 是<span class="accent">组装</span>出来的，不是写死的</h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>分段 + 按需拼接 + 缓存<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">写死 prompt 的三个问题</h3>
+        <ul class="blist mt-s">
+          <li>每个项目都要重写一遍</li>
+          <li>改一处可能全局冲突</li>
+          <li><b class="bad">每次请求都带全部内容</b>——token 浪费</li>
+        </ul>
+        <h3 class="h3 mt-m">解法：分段 + 按状态拼接</h3>
+        <p class="dim"><span class="mono">PROMPT_SECTIONS</span> 字典：identity / tools / workspace / memory。<span class="mono">assemble_system_prompt(context)</span> 按<strong>真实状态</strong>加载（文件存不存在、工具注册没），不靠关键词猜。</p>
+        <div class="card card-soft mt-m"><p><b class="accent2">为什么不全加载：</b>system prompt 每轮都计费；信息越少越聚焦，无关指令就是噪声。</p></div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s10 · 运行时组装 + 缓存</span>
+PROMPT_SECTIONS = {
+    <span class="s">"identity"</span>:  <span class="k">lambda</span> ctx: IDENTITY,
+    <span class="s">"tools"</span>:     <span class="k">lambda</span> ctx: build_tools_doc(),
+    <span class="s">"workspace"</span>: <span class="k">lambda</span> ctx: (
+        ws_doc <span class="k">if</span> ctx.get(<span class="s">"cwd"</span>) <span class="k">else</span> <span class="s">""</span>),
+    <span class="s">"memory"</span>:    <span class="k">lambda</span> ctx: (
+        mem_idx <span class="k">if</span> ctx.get(<span class="s">"has_memory"</span>) <span class="k">else</span> <span class="s">""</span>),
+}
+
+<span class="k">def</span> <span class="f">get_system_prompt</span>(ctx):
+    key = json.dumps(ctx, sort_keys=<span class="b">True</span>)
+    <span class="k">if</span> key <span class="k">not in</span> _cache:          <span class="c"># 避免重拼</span>
+        _cache[key] = <span class="s">"\n\n"</span>.join(
+            s(ctx) <span class="k">for</span> s <span class="k">in</span> PROMPT_SECTIONS.values())
+    <span class="k">return</span> _cache[key]</div>
+        <div class="card card-soft mt-m"><p><b class="purple">CC：</b>~20-30 段，static/dynamic 用 <span class="mono">SYSTEM_PROMPT_DYNAMIC_BOUNDARY</span> 切分，静态部分命中全局 cache block；<span class="mono">mcp_instructions</span> 是唯一易变段。</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s10，系统提示词。格言——<strong>prompt 是组装出来的，不是写死的</strong>。</p>
+      <p>写死的 prompt 有三个问题：每个项目要重写、改一处可能全局冲突、最严重的是——每次 API 请求都把全部内容带上，纯粹浪费 token。</p>
+      <p>解法是把 prompt 拆成段，比如 identity、tools、workspace、memory，然后按<strong>真实状态</strong>拼接。注意是按真实状态，不是靠猜消息里的关键词。比如当前工作目录有内容，才加载 workspace 段；有记忆系统，才加载 memory 索引。</p>
+      <p>右边代码还展示了缓存技巧——用 json.dumps 把 context 当 key，避免重复拼接字符串。这个缓存跟 Claude Code 的 API 级 prompt cache 不是一回事，这里只是避免重复拼字符串。</p>
+      <p>底下提了 Claude Code 的做法：它有 20 到 30 个 prompt 段，用一条 boundary 把静态和动态分开，静态部分命中全局缓存块。唯一的易变段是 mcp_instructions——这正好接上 s19 要讲的 MCP。</p>
+      <p>核心理念：信息越少越聚焦，无关指令就是噪声。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 20. s11 ERROR RECOVERY ============ -->
+  <section class="slide" data-title="s11 Error Recovery">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s11</span> <span>ERROR RECOVERY</span> <span class="layer-pill">韧性 · 遇错分类恢复</span></div>
+      <h2 class="h2">错误不是终点，<span class="accent">是重试的起点</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>升级 token、压缩上下文、切换模型——然后 continue 回循环<span class="q">”</span></div>
+    <div class="grid g3 mt-l" style="gap:14px">
+      <div class="card card-accent">
+        <h4 class="orange">① max_tokens</h4>
+        <p>输出被截断。先升级 8K→64K（messages 不变）；仍截断则 append 输出 + 续写提示，最多续 3 次。</p>
+      </div>
+      <div class="card card-accent2">
+        <h4 class="cyan">② prompt_too_long</h4>
+        <p>上下文太长。reactive_compact 后重试；若已压缩过，放弃（不会再缩了）。</p>
+      </div>
+      <div class="card card-accent">
+        <h4 class="purple">③ 429 / 529</h4>
+        <p>限流/服务端错误。指数退避 + 抖动：<span class="mono">min(500×2ⁿ, 32000) + rand(0~25%)</span>，最多 10 次；连续 3 次 529 → 切 FALLBACK_MODEL。</p>
+      </div>
+    </div>
+    <div class="split l54 mt-l">
+      <div>
+        <div class="code-block"><span class="c"># s11 · try/except 包住 LLM 调用</span>
+<span class="k">try</span>:
+    resp = client.messages.create(...)
+<span class="k">except</span> MaxTokensError:
+    <span class="k">if</span> <span class="k">not</span> state.escalated:
+        state.max_tokens = <span class="n">64000</span>  <span class="c"># 升级</span>
+    <span class="k">else</span>: append_continuation()
+<span class="k">except</span> PromptTooLong:
+    <span class="f">reactive_compact</span>(messages)
+<span class="k">except</span> RateLimitError:
+    <span class="f">backoff_sleep</span>(attempt)
+<span class="k">continue</span>  <span class="c"># 回到 while True</span></div>
+      </div>
+      <div>
+        <div class="card card-soft">
+          <h4>RecoveryState 追踪</h4>
+          <p>升级次数、恢复次数、续写次数——防止无限重试。</p>
+        </div>
+        <div class="card card-soft mt-m">
+          <h4 class="accent">CC 的精细之处</h4>
+          <ul class="blist">
+            <li>13+ 种原因/转换码</li>
+            <li><b>收益递减检测</b>：续写 3 次每次增量 &lt;500 token → 停（没真输出）</li>
+            <li>服务端 <span class="mono">Retry-After</span> 头优先</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s11，错误恢复。格言——<strong>错误不是终点，是重试的起点</strong>。</p>
+      <p>生产环境里 API 报错是常态：输出被截断、上下文太长、限流、服务端 5xx。一个不处理错误的 agent，就像一辆一碰就熄火的车。</p>
+      <p>做法是把 LLM 调用包在 try/except 里，按错误类型路由到三条恢复路径之一，然后 continue 回到主循环。看上面三张卡片：</p>
+      <p>第一条 max_tokens——输出被截断。先升级 token 上限，从 8K 升到 64K，messages 不用动；如果还截断，就把已有输出 append 回去，加个"请继续"的提示，最多续写 3 次。</p>
+      <p>第二条 prompt_too_long——上下文太长。调 s08 的 reactive_compact 压缩后重试；如果已经压缩过了还报这个错，就放弃，因为不可能再缩了。</p>
+      <p>第三条 429 或 529——限流或服务端错误。指数退避加随机抖动，最多重试 10 次；如果连续 3 次都是 529，就切换到备用模型。</p>
+      <p>Claude Code 做得更细，有 13 种以上的错误转换码。我最喜欢的是它的<strong>收益递减检测</strong>——如果续写了 3 次，每次输出增量都不到 500 token，说明模型其实没在产出真东西，直接停。这种细节决定了 agent 到底好不好用。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 21. SECTION DIVIDER · 阶段 4 ============ -->
+  <section class="slide divider-slide" data-title="阶段4">
+    <p class="kicker part-tag">// 阶段 4 · 长期运行</p>
+    <div class="divider-num">s12 — s14</div>
+    <h2 class="h2">让任务<span class="accent">长期运行</span></h2>
+    <p class="lede" style="max-width:680px">单轮对话装不下大目标。<br>任务落盘成依赖图、慢操作丢后台、定时触发——让 agent 摆脱"踹一下动一下"。</p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">s12 Task System</span>
+      <span class="tag t-accent">s13 Background Tasks</span>
+      <span class="tag t-accent">s14 Cron Scheduler</span>
+    </div>
+    <aside class="notes">
+      <p>第四部分——<strong>阶段 4，让任务长期运行</strong>。</p>
+      <p>前 11 课的 agent 还是"用完即走"型：开终端、给任务、做完关掉。但真实的大目标装不进一次对话里。这三课让它能持久化、能异步、能定时。</p>
+      <p>s12 把任务落盘成依赖图，这是后面多 agent 协作的基础；s13 把慢操作丢后台跑，agent 不傻等；s14 让 agent 能按时间表自己触发任务。这三课合在一起，agent 才算有了"长期记忆"和"自主性"的雏形。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 22. s12 TASK SYSTEM ============ -->
+  <section class="slide" data-title="s12 Task System">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s12</span> <span>TASK SYSTEM</span> <span class="layer-pill">任务 · 持久化、可恢复、带依赖</span></div>
+      <h2 class="h2">大目标拆成小任务，<span class="accent">排好序，持久化</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>文件持久化的任务图——多 agent 协作的基础<span class="q">”</span></div>
+    <div class="split l45 mt-l">
+      <div>
+        <h3 class="h3">为什么需要它</h3>
+        <p class="dim">不能先盖屋顶再打地基。任务有顺序，形成一个<strong>DAG</strong>（带 <span class="mono">blockedBy</span>）。TodoWrite 是会话内的清单；这个是跨会话、带依赖、可恢复的任务系统。</p>
+        <h3 class="h3 mt-m">状态机</h3>
+        <div class="eq" style="font-size:16px;padding:14px 18px">pending <span class="arr">→claim→</span> in_progress <span class="arr">→complete→</span> completed</div>
+        <h3 class="h3 mt-m">五个工具</h3>
+        <div class="tags">
+          <span class="tag">create_task</span><span class="tag">list_tasks</span>
+          <span class="tag">get_task</span><span class="tag">claim_task</span><span class="tag">complete_task</span>
+        </div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s12 · Task 数据类 + 落盘</span>
+<span class="k">@dataclass</span>
+<span class="k">class</span> <span class="d">Task</span>:
+    id: str
+    subject: str
+    description: str
+    status: str = <span class="s">"pending"</span>
+    owner: str | <span class="b">None</span> = <span class="b">None</span>
+    blockedBy: list[str] = field(default_factory=list)
+
+<span class="c"># claim 时检查：所有依赖必须 completed</span>
+<span class="k">def</span> <span class="f">can_start</span>(task):
+    <span class="k">return all</span>(
+        dep.status == <span class="s">"completed"</span>
+        <span class="k">for</span> dep <span class="k">in</span> map(get_task, task.blockedBy))
+
+<span class="c"># complete 后扫描下游，解锁新任务</span>
+<span class="c"># 存：.tasks/{id}.json  跨会话恢复=读文件</span></div>
+        <div class="card card-soft mt-m"><p><b class="purple">CC 并发安全：</b><span class="mono">proper-lockfile</span> 每任务文件锁 + 列表级 <span class="mono">.lock</span> 让 claim 原子；<span class="mono">.highwatermark</span> 防 ID 复用。Task 工具都标 <span class="mono">isConcurrencySafe:true</span>。</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s12，任务系统。这课很重要，是后面多 agent 协作的基础。格言——<strong>大目标拆成小任务，排好序，持久化</strong>。</p>
+      <p>为什么要它？因为任务有顺序——你不能先盖屋顶再打地基。任务之间形成依赖关系，本质是一个有向无环图，DAG。每个任务带一个 blockedBy 字段，列出它依赖哪些前置任务。</p>
+      <p>它跟 s05 的 TodoWrite 区别在哪？TodoWrite 是会话内的内存清单，关掉就没了；这个是<strong>落盘到 .tasks 目录的 JSON 文件，跨会话可恢复</strong>，而且带依赖顺序。</p>
+      <p>看状态机：pending 到 claim 变成 in_progress，到 complete 变成 completed。claim 的时候会检查 can_start——所有 blockedBy 依赖都必须是 completed 才能开始。complete 之后还会扫描下游，把因为这条任务完成而新解锁的任务放出来。</p>
+      <p>底下提了 Claude Code 的并发安全设计——它用 proper-lockfile 给每个任务文件加锁，还有个 highwatermark 文件防止 ID 被复用。这些细节在多 agent 抢任务时非常关键。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 23. s13 BACKGROUND TASKS ============ -->
+  <section class="slide" data-title="s13 Background Tasks">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s13</span> <span>BACKGROUND TASKS</span> <span class="layer-pill">后台 · 异步不阻塞</span></div>
+      <h2 class="h2">慢操作丢后台，<span class="accent">agent 继续思考</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>后台线程跑命令，完成后注入通知<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <h3 class="h3">像洗衣机一样</h3>
+        <p class="dim">你不会盯着洗衣机等 30 分钟。<span class="mono">npm install</span> 要几分钟——<strong>agent 傻等时 LLM 还在按 token 计费</strong>。文件读取（毫秒）和 git status（1 秒）不用等；分钟级操作该丢后台。</p>
+        <h3 class="h3 mt-m">同步 vs 后台</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n green">同步</span><div><p>立即返回完整结果。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">后台</span><div><p>返回占位符 + bg_id；下一轮注入 <span class="mono">&lt;task_notification&gt;</span>。</p></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s13 · 守护线程 + 通知队列</span>
+<span class="k">def</span> <span class="f">start_background_task</span>(cmd):
+    bg_id = uuid()
+    <span class="hl">threading.Thread(</span>
+        target=run_and_notify,
+        args=(bg_id, cmd), daemon=<span class="b">True</span>).start()
+    <span class="k">return</span> {<span class="s">"bg_id"</span>: bg_id,
+            <span class="s">"content"</span>: <span class="s">"started in background..."</span>}
+
+<span class="k">def</span> <span class="f">collect_background_results</span>():
+    <span class="c"># 把完成的结果合并进下一轮 user 消息</span>
+    <span class="k">return</span> [f<span class="s">"&lt;task_notification id={id}&gt;{out}&lt;/...&gt;"</span>
+            <span class="k">for</span> id, out <span class="k">in</span> done_q.drain()]</div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">关键约束：</b>通知<strong>不复用</strong>原 tool_use_id——一个 tool_use 只配一个同步 tool_result，通知是独立注入的下一条消息。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>单线程 Node/Bun，"后台"= 不 await + 输出重定向文件；7 种后台类型；移动端用 Haiku 后台生成进度摘要；45 秒输出停滞看门狗检测交互式卡死。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s13，后台任务。格言——<strong>慢操作丢后台，agent 继续思考</strong>。</p>
+      <p>这课的比喻特别好——洗衣机。你不会把衣服丢进洗衣机然后盯着它等 30 分钟吧？你会去干别的事。agent 也一样。<span class="mono">npm install</span> 要跑好几分钟，如果 agent 傻等着，LLM 那边还在按 token 计费，纯浪费。</p>
+      <p>怎么判断要不要丢后台？看耗时——文件读取是毫秒级，git status 大概 1 秒，这些同步等就行；分钟级的操作就该丢后台。</p>
+      <p>实现上是守护线程。模型在 bash 工具上加一个 <span class="mono">run_in_background</span> 参数，明确说"这个丢后台"。然后 start_background_task 起一个 daemon 线程跑命令，立即返回一个 bg_id 和占位结果。下一轮 collect_background_results 把完成的结果收集起来，包成 task_notification 注入进去。</p>
+      <p>这里有个<strong>容易踩的坑</strong>——通知不能复用原来那个 tool_use 的 id。为什么？因为协议里一个 tool_use 只能配一个同步的 tool_result，已经返回过占位符了。通知必须是独立注入的下一条消息。这种语义细节决定了你的 agent 会不会报奇怪的错误。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 24. s14 CRON SCHEDULER ============ -->
+  <section class="slide" data-title="s14 Cron Scheduler">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s14</span> <span>CRON SCHEDULER</span> <span class="layer-pill">调度 · 按时间触发</span></div>
+      <h2 class="h2">定时触发，<span class="accent">不需要人推</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>按时间表生产工作——调度与执行解耦<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">像闹钟</h3>
+        <p class="dim">闹钟 7 点响，不管你看没看着它。周期任务（"9 点跑测试"、"每 30 分钟查 CI"）<strong>不该每次都靠人推</strong>。</p>
+        <h3 class="h3 mt-m">四层模型 · 生产者/消费者解耦</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n cyan">①</span><div><b>调度守护线程</b><p>每秒轮询，检查 cron_matches。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n green">②</span><div><b>队列</b><p>触发的任务进 cron_queue。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">③</span><div><b>队列处理器</b><p>队列非空 且 agent 空闲（agent_lock）时，启动一轮 agent_loop。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n purple">④</span><div><b>消费者</b><p>注入 <span class="mono">[Scheduled]</span> 消息。</p></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s14 · CronJob 数据类</span>
+<span class="k">@dataclass</span>
+<span class="k">class</span> <span class="d">CronJob</span>:
+    id: str
+    cron: str        <span class="c"># 标准 5 段 cron</span>
+    prompt: str
+    recurring: bool
+    durable: bool    <span class="c"># 持久化到 .scheduled_tasks.json</span>
+
+<span class="c"># 守护线程每秒：</span>
+<span class="k">def</span> <span class="f">scheduler_loop</span>():
+    <span class="k">while True</span>:
+        <span class="k">for</span> job <span class="k">in</span> jobs:
+            <span class="k">if</span> <span class="f">cron_matches</span>(job.cron, now()):
+                cron_queue.put(job)
+        time.sleep(<span class="n">1</span>)</div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">细节：</b>DOM 和 DOW 同时受限 = <strong>OR 语义</strong>；date-aware minute_marker 防同分钟双触发；durable 只保存定义，cron 必须跑在 agent 进程内。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>加抖动（哈希决定，避免 :00 踩踏）、7 天自动过期、MAX_JOBS=50、低 QoS workload 标签。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s14，cron 调度。格言——<strong>定时触发，不需要人推</strong>。</p>
+      <p>比喻是闹钟。闹钟设了 7 点，到点就响，不管你看没看着它。很多任务是周期性的——"每天 9 点跑测试"、"每 30 分钟查一下 CI"，这些不该每次都靠人去推一把。</p>
+      <p>这是个<strong>四层模型，生产者和消费者解耦</strong>。第一层，调度守护线程每秒轮询一次，检查哪个 cron 表达式匹配当前时间。第二层，匹配的任务进队列。第三层，队列处理器判断：队列非空、且 agent 空闲时，才启动一轮 agent loop。第四层，消费者往消息里注入一条 Scheduled 消息。</p>
+      <p>为什么要用队列和锁解耦？因为调度线程和 agent 主循环是两个不同的节奏——调度是每秒检查，agent 是按轮次跑。中间用 cron_queue 和 agent_lock 做缓冲，互不干扰。</p>
+      <p>Claude Code 在这上面加了很多生产级细节：抖动，用哈希决定每个任务提前一点点触发，避免所有任务都在 :00 或 :30 集中触发把服务打挂；7 天自动过期；最多 50 个任务。这些都是踩过坑才有的设计。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 25. SECTION DIVIDER · 阶段 5 ============ -->
+  <section class="slide divider-slide" data-title="阶段5">
+    <p class="kicker part-tag">// 阶段 5 · 多 Agent 协作</p>
+    <div class="divider-num">s15 — s18</div>
+    <h2 class="h2">一个搞不定，<span class="accent">组队来</span></h2>
+    <p class="lede" style="max-width:680px">"重构整个后端"横跨 auth/db/API/tests——单个 agent 的注意力覆盖不了。<br>持久化队友 + 异步邮箱 + 协议握手 + 自治认领 + 目录隔离。</p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">s15 Teams</span>
+      <span class="tag t-accent">s16 Protocols</span>
+      <span class="tag t-accent">s17 Autonomous</span>
+      <span class="tag t-accent">s18 Worktree</span>
+    </div>
+    <aside class="notes">
+      <p>第五部分——<strong>阶段 5，多 agent 协作</strong>。这是课程里最激动人心的一块。</p>
+      <p>为什么要组队？举个例子——"重构整个后端"，这个任务横跨认证、数据库、API、测试四个模块。一个 agent 的注意力根本覆盖不过来，它会被任何一个模块的细节淹没。</p>
+      <p>这四课解决了四个问题：s15 解决"谁来干、怎么通信"——队友加邮箱；s16 解决"队友之间怎么约定"——协议握手；s17 解决"任务怎么分配"——自治认领；s18 解决"在哪干"——目录隔离。这四个问题答完，你就有一个真正能协同工作的多 agent 系统了。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 26. s15 AGENT TEAMS ============ -->
+  <section class="slide" data-title="s15 Agent Teams">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s15</span> <span>AGENT TEAMS</span> <span class="layer-pill">团队 · 消息总线 + 收件箱</span></div>
+      <h2 class="h2">一个搞不定，<span class="accent">组队来</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>文件收件箱 + 队友线程——一个 Lead + N 个 teammate<span class="q">”</span></div>
+    <div class="split l45 mt-l">
+      <div>
+        <h3 class="h3">子 agent ≠ 队友</h3>
+        <div class="card card-soft mt-s" style="padding:12px 14px">
+          <p style="font-size:14px"><b class="cyan">子 agent (s06)：</b>一次性 / 只返回结论 / 上下文隔离</p>
+          <p style="font-size:14px" class="mt-s"><b class="orange">队友 (s15)：</b>多轮交互 / 异步邮箱 / 共享信息</p>
+        </div>
+        <h3 class="h3 mt-m">三个新增</h3>
+        <ul class="blist mt-s">
+          <li><b class="cyan">MessageBus</b>——文件收件箱：send = append JSON 行，read = 读后删除（消费式）</li>
+          <li><b class="purple">spawn_teammate_thread</b>——队友跑在自己 daemon 线程，独立 prompt/messages，限 10 轮</li>
+          <li><b class="green">Lead 收件箱注入</b>——主循环每轮末把队友消息塞进 Lead 历史</li>
+        </ul>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s15 · 文件收件箱</span>
+<span class="k">def</span> <span class="f">send_message</span>(to, msg):
+    path = <span class="s">f".mailboxes/{to}.jsonl"</span>
+    <span class="k">with</span> open(path, <span class="s">"a"</span>) <span class="k">as</span> f:    <span class="c"># 追加一行</span>
+        f.write(json.dumps(msg) + <span class="s">"\n"</span>)
+
+<span class="k">def</span> <span class="f">check_inbox</span>(name):
+    path = <span class="s">f".mailboxes/{name}.jsonl"</span>
+    msgs = read_all(path)
+    unlink(path)              <span class="c"># 读后删=消费</span>
+    <span class="k">return</span> msgs</div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">队友工具（精简版）：</b>bash / read / write / send_message。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>无中心总线，每个 agent 直接写别人的 inbox（proper-lockfile 保护）；15 种结构化消息类型；权限冒泡——队友请求→Lead 审批→回复。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s15，agent teams。格言——<strong>一个搞不定，组队来</strong>。</p>
+      <p>先把它跟 s06 的子 agent 区分开。子 agent是一次性的临时工，干完一件事就走，只把结论带回来，上下文完全隔离。但团队场景需要的是<strong>能持续沟通、能共享信息的队友</strong>——这是不一样的。</p>
+      <p>实现上是三个新增的东西。第一，MessageBus——本质是一个文件收件箱。发消息就是往对方的 .mailboxes jsonl 文件里追加一行，读消息就是读出来然后删掉文件（消费式读取）。第二，队友跑在自己的 daemon 线程里，有独立的 system prompt 和 messages，限制最多 10 轮防止失控。第三，Lead 的主循环每轮结束都会检查自己的收件箱，把队友发来的消息塞进自己的历史。</p>
+      <p>队友的工具是精简版——只有 bash、read、write、send_message，没有 task 工具（不能再生子 agent）。</p>
+      <p>Claude Code 有个有意思的设计——它没有中心总线，每个 agent 直接写对方的 inbox 文件。它定义了 15 种结构化消息，包括空闲通知、权限请求、计划审批、关机请求这些。权限还能冒泡——队友遇到需要审批的操作，会发请求给 Lead，Lead 审批后回复。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 27. s16 TEAM PROTOCOLS ============ -->
+  <section class="slide" data-title="s16 Team Protocols">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s16</span> <span>TEAM PROTOCOLS</span> <span class="layer-pill">协议 · 结构化握手</span></div>
+      <h2 class="h2">队友之间，<span class="accent">要有约定</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>request-response 模式驱动协商，request_id 串起整条链<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <h3 class="h3">为什么松散协调不够</h3>
+        <p class="dim">两个场景暴露问题：</p>
+        <div class="stack mt-s">
+          <div class="card card-soft" style="padding:12px 14px"><p style="font-size:14px"><b class="red">① 关机</b>：直接 kill 线程，可能留下写了一半的文件——需要握手。</p></div>
+          <div class="card card-soft" style="padding:12px 14px"><p style="font-size:14px"><b class="orange">② 计划审批</b>：有风险的重构，应该先让 Lead 审过再动手。</p></div>
+        </div>
+        <p class="dim mt-m">两者是<strong>同一种结构</strong>：request → response，靠 ID 关联，带状态机。</p>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s16 · ProtocolState + 路由</span>
+<span class="k">@dataclass</span>
+<span class="k">class</span> <span class="d">ProtocolState</span>:
+    request_id: str
+    type: str          <span class="c"># shutdown/plan_approval</span>
+    sender: str
+    target: str
+    status: str = <span class="s">"pending"</span>  <span class="c"># approved/rejected</span>
+    payload: dict
+
+<span class="c"># match_response 按 request_id 关联</span>
+<span class="c"># 且校验 type——shutdown_response</span>
+<span class="c"># 不能误批准 plan_approval</span></div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">两个协议：</b><span class="mono">shutdown_request/response</span>（Lead→队友）、<span class="mono">plan_approval_request/response</span>（队友→Lead）。加协议 = 在 dispatch_message 里加一个 if。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>关机是三段式通信（请求→批准/拒绝→teammate_terminated 通知）；用 Zod 校验结构化 JSON。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s16，团队协议。格言——<strong>队友之间要有约定</strong>。</p>
+      <p>s15 的协调是松散的——大家往邮箱塞消息就行。但有两个场景，松散协调会出问题。</p>
+      <p>第一个，关机。你不能直接 kill 一个队友线程，因为它可能正写到一半文件，直接杀掉就留下损坏的数据。需要握手——先发关机请求，等它处理完、回复确认，再真正停。</p>
+      <p>第二个，计划审批。队友准备做一个有风险的大重构，应该先把计划发给 Lead 审一遍，Lead 同意了再动手。</p>
+      <p>这两个场景本质是<strong>同一种结构</strong>——request 到 response，靠一个 request_id 串起来，带一个 pending/approved/rejected 的状态机。</p>
+      <p>右边代码看 ProtocolState。关键细节是 match_response 不仅要按 request_id 关联，还要校验 type——否则一个 shutdown 的 response 可能误批准了一个 plan_approval 请求。这种类型校验防的就是"串台"。</p>
+      <p>扩展性也很好——加一个新协议，就是在 dispatch_message 里加一个 if 分支。Claude Code 的关机是三段式：请求、批准或拒绝、最后还有个 teammate_terminated 通知，确保双方状态一致。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 28. s17 AUTONOMOUS + s18 WORKTREE ============ -->
+  <section class="slide" data-title="s17-s18 自治与隔离">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s17</span> <span>AUTONOMOUS</span> <span style="opacity:.4;margin:0 6px">+</span> <span class="id">s18</span> <span>WORKTREE ISOLATION</span></div>
+      <h2 class="h3">自己看板认领 · 各干各的目录</h2>
+    </div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div class="card card-accent">
+        <div class="mantra" style="font-size:18px;padding:10px 14px;background:transparent;border:none;padding-left:0">
+          <span class="q">“</span>队友自己扫看板，有活就认领<span class="q">”</span>
+        </div>
+        <h4 class="accent mt-s">s17 · 不依赖 Lead 分配</h4>
+        <ul class="blist mt-s">
+          <li><b class="cyan">idle_poll</b>：IDLE 时每 5 秒轮询，先看收件箱再看任务板，60 秒超时</li>
+          <li><b class="green">scan_unclaimed_tasks</b>：找 pending + 无 owner + can_start 的任务</li>
+          <li><b class="orange">claim 检查 owner</b>：拒绝已认领的（避免最后写入者赢）</li>
+        </ul>
+        <p class="dim mt-s" style="font-size:13px">三阶段生命周期：<b>WORK → IDLE → SHUTDOWN</b>。IDLE 也能立刻响应关机请求。</p>
+      </div>
+      <div class="card card-accent2">
+        <div class="mantra" style="font-size:18px;padding:10px 14px;background:transparent;border:none;padding-left:0">
+          <span class="q">“</span>任务管目标，worktree 管目录，按 ID 绑定<span class="q">”</span>
+        </div>
+        <h4 class="purple mt-s">s18 · 并行执行的目录隔离</h4>
+        <ul class="blist mt-s">
+          <li><b class="cyan">git worktree</b>：每个任务一个独立目录 + 分支 <span class="mono">.worktrees/{name}/</span></li>
+          <li><b class="green">bind_task_to_worktree</b>：写 task.worktree 字段，<strong>不改状态</strong>（仍 pending）</li>
+          <li><b class="bad">remove 拒绝有未提交改动的</b>（需 <span class="mono">discard_changes=true</span>）</li>
+          <li>事件记 <span class="mono">.worktrees/events.jsonl</span> 可审计</li>
+        </ul>
+        <p class="dim mt-s" style="font-size:13px">解决"在哪干"——Alice 和 Bob 不再抢着改同一个 <span class="mono">config.py</span>。</p>
+      </div>
+    </div>
+    <div class="card card-soft mt-l">
+      <p><b class="accent2">CC 对比：</b>s17 自治是 4 种机制组合（空闲通知 + 500ms 邮箱轮询 + <span class="mono">fs.watch</span> 任务监听 + 主动 tryClaim），无固定超时；s18 有两条路径（EnterWorktree 用 <span class="mono">process.chdir</span>，AgentTool 用 <span class="mono">cwdOverride</span>），但<strong>没有任务-worktree 绑定</strong>——靠上下文关联。</p>
+    </div>
+    <aside class="notes">
+      <p>这两课我合在一页讲，因为它们是多 agent 协作的收尾。左边 s17 自治，右边 s18 隔离。</p>
+      <p><strong>s17 解决"任务怎么分配"</strong>。s16 的队友还是等 Lead 派活——如果有 10 个没认领的任务，Lead 得手动派 10 次，不 scale。自治的做法是：队友空闲时自己扫任务板，看到有 pending、没 owner、又能开始的任务，就自动认领。生命周期变成 WORK、IDLE、SHUTDOWN 三阶段。一个细节——IDLE 时也能立刻响应关机请求，不用等下一轮工作。</p>
+      <p><strong>s18 解决"在哪干"</strong>。前面三课解决了"谁干"和"怎么沟通"，但没解决"在哪干"。如果 Alice 和 Bob 都在同一个目录改 config.py，互相覆盖，根本没法干净回滚。s18 用 git worktree——每个任务一个独立目录加分支，互不干扰。绑定时只写 task.worktree 字段，不改任务状态，这样 Lead 可以提前建好任务和目录，队友空闲时自然认领。</p>
+      <p>底下对比了 Claude Code：它的自治是 4 种机制组合，不是单一轮询；它的 worktree 有两条路径，但<strong>故意没做任务-worktree 绑定</strong>，靠上下文关联——这是设计取舍。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 29. SECTION DIVIDER · 阶段 6 ============ -->
+  <section class="slide divider-slide" data-title="阶段6">
+    <p class="kicker part-tag">// 阶段 6 · 接外部能力 · 合体</p>
+    <div class="divider-num">s07 · s19 · s20</div>
+    <h2 class="h2">能力不够？<span class="accent">插上 MCP</span>，全部归一</h2>
+    <p class="lede" style="max-width:680px">技能按需展开、外部工具用标准协议接入、终章把前 19 个机制全部挂回<strong>同一个 while True</strong>。</p>
+    <div class="tags mt-l">
+      <span class="tag t-accent">s07 Skill Loading</span>
+      <span class="tag t-accent">s19 MCP Plugin</span>
+      <span class="tag t-accent">s20 Comprehensive</span>
+    </div>
+    <aside class="notes">
+      <p>最后一个部分——<strong>阶段 6，接外部能力并合体</strong>。</p>
+      <p>前面 18 课搭出来的 harness，工具全是手写的。但真实世界里你很快要接 Jira、接部署系统、接 Notion 知识库——不可能每个都重写工具代码。这两课就是解决"怎么接外部能力"的：s07 是技能按需加载，s19 是用 MCP 标准协议接外部工具。</p>
+      <p>然后 s20 是终点章——把前面 19 个机制全部拼回一个完整可运行的系统。这是整门课的高潮，你会看到所有东西是怎么挂在同一个循环上的。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 30. s07 SKILL LOADING ============ -->
+  <section class="slide" data-title="s07 Skill Loading">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s07</span> <span>SKILL LOADING</span> <span class="layer-pill">知识 · 按需加载</span></div>
+      <h2 class="h2">用到时再加载，<span class="accent">别全塞 prompt 里</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>通过 tool_result 注入，不塞 system prompt<span class="q">”</span></div>
+    <div class="split l54 mt-l">
+      <div>
+        <h3 class="h3">痛点</h3>
+        <p class="dim">把 React 风格指南（2000 行）+ SQL 指南（1500）+ API 设计（3000）全塞 system prompt = <strong>每次调用都带 6500 行，99% 无关</strong>。</p>
+        <h3 class="h3 mt-m">两层设计</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n cyan">T1</span><div><b>目录（catalog）</b><p>启动时扫 <span class="mono">skills/</span>，解析 YAML frontmatter，注入 ~100 token/技能的目录进 SYSTEM。<em>可缓存</em>。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">T2</span><div><b>内容（content）</b><p><span class="mono">load_skill(name)</span> 按需把 ~2000 token 的完整 SKILL.md 作为 tool_result 注入。<em>按需付费</em>。</p></div></div>
+        </div>
+        <p class="dim2 mt-m" style="font-size:13px">SKILL.md 还能引导后续 read_file/bash 去访问它引用的资源。</p>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s07 · 两层加载</span>
+<span class="c"># T1: 目录常驻（启动时构建）</span>
+SKILL_CATALOG = [
+    {<span class="s">"name"</span>: <span class="s">"react-style"</span>,
+     <span class="s">"description"</span>: <span class="s">"React 组件风格指南"</span>},
+    {<span class="s">"name"</span>: <span class="s">"sql-guide"</span>,
+     <span class="s">"description"</span>: <span class="s">"SQL 查询最佳实践"</span>},
+]
+SYSTEM += render_catalog(SKILL_CATALOG)
+
+<span class="c"># T2: 按需注入完整内容</span>
+<span class="k">def</span> <span class="f">load_skill</span>(name):
+    content = SKILL_REGISTRY[name]  <span class="c"># 注册表查表</span>
+    <span class="k">return</span> content  <span class="c"># 作为 tool_result</span></div>
+        <div class="card card-soft mt-m"><p><b class="accent2">安全：</b>注册表查表，<strong>不用文件路径加载</strong>——避免路径穿越攻击。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>技能来自 user/project/--add-dir/plugin/MCP 等多源；frontmatter 字段丰富（when_to_use、allowed-tools、context、model、hooks、paths）。</p></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s07，技能加载。格言——<strong>用到时再加载，别全塞 prompt 里</strong>。</p>
+      <p>痛点很直白。想象一下，你把 React 风格指南 2000 行、SQL 指南 1500 行、API 设计规范 3000 行，全塞进 system prompt——每次 API 调用都带 6500 行，但 99% 的时候跟当前任务根本无关，纯浪费。</p>
+      <p>解法是<strong>两层设计</strong>。第一层目录，启动时扫 skills 目录，解析每个技能的 YAML frontmatter，只取 name 和 description，注入大概 100 token 每个技能的目录进 system prompt。这部分量很小，而且可缓存——agent 至少知道"我有哪些技能可用"。第二层内容，真正用到时，调 load_skill，把那个 2000 token 的完整 SKILL.md 作为 tool_result 注入进来。这就是按需付费。</p>
+      <p>有个安全点——加载技能是<strong>通过注册表查表，不是用文件路径加载</strong>。这避免了路径穿越攻击，比如有人构造个恶意路径想去读 /etc/passwd。</p>
+      <p>这个模式跟 s09 的记忆、s10 的 prompt 组装，其实是同一个思想的不同应用：<em>索引常驻，内容按需</em>。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 31. s19 MCP PLUGIN ============ -->
+  <section class="slide" data-title="s19 MCP Plugin">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s19</span> <span>MCP PLUGIN</span> <span class="layer-pill">插件 · 标准协议接入</span></div>
+      <h2 class="h2">外接工具，<span class="accent">标准协议</span></h2>
+    </div>
+    <div class="mantra mt-s"><span class="q">“</span>发现、组装、调用——agent 不需要知道工具是谁写的<span class="q">”</span></div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div>
+        <h3 class="h3">为什么需要 MCP</h3>
+        <p class="dim">前 18 课的工具全是手写的。要接 Jira、部署系统、Notion——<strong>不可能每个都重写工具代码</strong>。需要一个标准协议：实现了它，agent 就能调用，不管服务端用什么语言写的。</p>
+        <h3 class="h3 mt-m">三步流程</h3>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n cyan">①</span><div><b>connect_mcp(name)</b><p>连接服务器 + 发 <span class="mono">tools/list</span> 发现工具。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n green">②</span><div><b>assemble_tool_pool</b><p>内置工具 + MCP 工具合并，命名空间 <span class="mono">mcp__{server}__{tool}</span> 防冲突。</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">③</span><div><b>调用</b><p>发 <span class="mono">tools/call</span>，对 agent 来说跟内置工具没区别。</p></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="code-block"><span class="c"># s19 · 工具池组装（命名空间防冲突）</span>
+<span class="k">def</span> <span class="f">assemble_tool_pool</span>(mcp_servers):
+    pool = <span class="f">list</span>(BUILTIN_TOOLS)
+    <span class="k">for</span> srv <span class="k">in</span> mcp_servers:
+        <span class="k">for</span> tool <span class="k">in</span> srv.discovered_tools:
+            <span class="hl">name = <span class="s">f"mcp__{srv.name}__{tool.name}"</span></span>
+            pool.append({<span class="s">"name"</span>: name, ...})
+    <span class="k">return</span> pool
+
+<span class="c"># 名字规范化：非[a-zA-Z0-9_-] → "_"</span>
+name = <span class="f">normalize_mcp_name</span>(raw)</div>
+        <div class="card card-soft mt-m">
+          <p><b class="accent2">关键取舍：</b>连接 MCP 后工具池变了，<strong>s10 的 prompt cache 必须丢弃</strong>——否则缓存的工具列表是旧的。</p>
+          <p class="dim2 mt-s" style="font-size:13px"><b class="purple">CC：</b>6 种传输（stdio/sse/http/ws/sse-ide/sdk）；本地远程分批并发（3+20）；OAuth 2.0+PKCE；配置优先级 5 层。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>s19，MCP 插件。格言——<strong>外接工具，标准协议</strong>。</p>
+      <p>为什么需要 MCP？前 18 课所有工具都是手写的。但你很快要接 Jira、接部署系统、接 Notion 知识库——你不可能为每个外部服务都重写一遍工具代码。MCP，也就是 Model Context Protocol，解决的就是这个：定义一个标准协议，<em>服务端只要实现了它，agent 就能调用，不管服务端是 Python、Go 还是 Node 写的</em>。</p>
+      <p>三步流程。第一步 connect_mcp，连接服务器并发 tools/list 去发现它提供哪些工具。第二步 assemble_tool_pool，把内置工具和 MCP 工具合并成一个池子——关键是命名空间，用 <span class="mono">mcp__服务器名__工具名</span> 的格式，避免不同服务器的同名工具冲突。第三步调用，发 tools/call，对 agent 来说，MCP 工具跟内置工具完全没区别。</p>
+      <p>底下有个重要的取舍——连接 MCP 之后工具池变了，<strong>s10 辛苦维护的 prompt cache 必须丢掉</strong>，否则缓存的工具列表是过时的。这是一个典型的"正确性优先于性能"的决策。</p>
+      <p>Claude Code 支持 6 种传输方式，本地和远程服务器分批并发连接，还有 OAuth 认证。MCP 现在是 agent 生态的事实标准。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 32. s20 COMPREHENSIVE — placement map ============ -->
+  <section class="slide" data-title="s20 机制归位图">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s20</span> <span>COMPREHENSIVE AGENT</span> <span class="layer-pill">综合 · 全部机制归到一个循环</span></div>
+      <h2 class="h3">机制很多，<span class="accent">循环一个</span> · 各机制挂在哪里？</h2>
+    </div>
+    <div class="mantra mt-s" style="font-size:18px"><span class="q">“</span>工具、权限、记忆、任务、团队、插件——都挂在同一个 while True 上<span class="q">”</span></div>
+    <div class="ascii mt-m" style="font-size:12px;line-height:1.5">
+用户输入
+  │
+  ├─ <span style="color:#7dcfff">UserPromptSubmit hooks</span>  (输入校验/注入上下文)
+  │
+  ├─ 预 LLM ── cron 队列 + 后台通知 + 压缩流水线 + <span style="color:#bb9af7">memory/skill/MCP</span> prompt 组装
+  │
+  ├─ <span style="color:#e0af68">错误恢复</span> 包住 LLM 调用  (429/529 重试 · max_tokens 升级 · prompt_too_long 压缩)
+  │       ▼
+  │   response = client.messages.create(...)
+  │       │
+  │       └─ 无 tool_use? → return（Stop hooks）
+  │
+  ├─ <span style="color:#f7768e">PreToolUse hooks</span> + <span style="color:#7aa2f7">权限</span> + <span style="color:#9ece6a">工具分发</span> + 后台分发
+  │
+  ├─ <span style="color:#f7768e">PostToolUse hooks</span>
+  │
+  └─ tool_result / task_notification → append 回 messages → loop
+    </div>
+    <aside class="notes">
+      <p>s20，终点章。格言——<strong>机制很多，循环一个</strong>。这一页是整门课的高潮。</p>
+      <p>真实的 agent 不会一次只用一个机制。难点不在于堆功能，而在于<strong>看清楚每个机制挂在循环的哪个位置</strong>。这张图就是答案。</p>
+      <p>我们顺着用户输入往下走。先是 UserPromptUse hooks 做输入校验。然后是预 LLM 阶段——cron 队列、后台通知、压缩流水线，还有 memory、skill、MCP 的 prompt 组装，全在这里准备好。</p>
+      <p>然后错误恢复包住整个 LLM 调用——429、529 重试，max_tokens 升级，prompt too long 就压缩。真正调 LLM 拿到 response。如果没 tool_use 就 return，触发 Stop hooks。</p>
+      <p>如果有 tool_use，就进 PreToolUse hooks、权限检查、工具分发，后台任务也在这里分流。执行完触发 PostToolUse hooks。最后把 tool_result 或 task_notification append 回 messages，loop 回去。</p>
+      <p>看到了吗？<em>s01 那个 30 行循环的骨架，一个字没改</em>。所有机制都是挂在外面的钩子。这就是 harness 工程的核心洞察。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 33. s20 — two planning layers + two delegation ============ -->
+  <section class="slide" data-title="s20 并存系统">
+    <div class="lesson-head">
+      <div class="lesson-num"><span class="id">s20</span> <span>并存的成对机制</span></div>
+      <h2 class="h3">真实系统里，机制是成对共存的</h2>
+    </div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div class="card card-accent">
+        <h4 class="cyan">两层规划并存</h4>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n green">①</span><div><b>todo_write</b><p>内存内 · 单 agent 防偏移 · 会话级</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">②</span><div><b>任务图 (s12)</b><p>落盘 .tasks/*.json · 带依赖 · 可认领 · 团队协作</p></div></div>
+        </div>
+      </div>
+      <div class="card card-accent2">
+        <h4 class="purple">两种委派并存</h4>
+        <div class="stack mt-s">
+          <div class="feat" style="padding:6px 0"><span class="n green">①</span><div><b>task (s06)</b><p>一次性子 agent · 只返回结论</p></div></div>
+          <div class="feat" style="padding:6px 0"><span class="n orange">②</span><div><b>spawn_teammate (s15)</b><p>持久线程 · MessageBus · 空闲扫板 · 自动认领</p></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid g2 mt-l" style="gap:20px">
+      <div class="card card-soft">
+        <h4>压缩流水线（跑在 LLM 之前）</h4>
+        <p class="mt-s" style="font-family:var(--font-mono);font-size:13px;color:var(--accent-3)">
+          tool_result_budget → snip_compact → micro_compact → compact_history
+        </p>
+      </div>
+      <div class="card card-soft">
+        <h4>恢复（包住 LLM 调用）</h4>
+        <p class="mt-s" style="font-size:14px">429/529 退避重试 · max_tokens 升级 · prompt_too_long 触发 reactive_compact</p>
+      </div>
+    </div>
+    <div class="card card-accent mt-l">
+      <p><b class="accent">27 个内置工具 + 已连接的 MCP 工具</b>，每轮通过 <span class="mono">assemble_tool_pool()</span> 重新组装。表面越来越复杂，但核心那个 <span class="mono">while True</span> 从 s01 到 s20 没变过。</p>
+    </div>
+    <aside class="notes">
+      <p>这一页讲 s20 里一个容易被忽略的点——<strong>很多机制是成对共存的，不是互相替代</strong>。</p>
+      <p>看左边两层规划。todo_write 是内存里的，给单个 agent 防偏移用，会话级；任务图是落盘的，带依赖、可认领，是给团队协作用的。它们解决不同层面的问题，所以在 s20 里同时存在。</p>
+      <p>右边两种委派也一样。task 是一次性的子 agent，只把结论带回来；spawn_teammate 是持久的队友线程，能通信、能自动认领任务。场景不同，机制并存。</p>
+      <p>底下两块是流水线和恢复。压缩流水线跑在 LLM 调用之前，按 budget、snip、micro、compact 这个顺序。恢复逻辑包住 LLM 调用本身。</p>
+      <p>这张卡的总结很重要——s20 里有 27 个内置工具加上一堆 MCP 工具，每轮重新组装。表面看复杂度爆炸，但核心那个 while True，<em>从 s01 到 s20 一个字没变</em>。这就是这门课最想传达的东西。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 34. RECAP · 20 mantras ============ -->
+  <section class="slide" data-title="20 句格言">
+    <p class="kicker">// 回顾 · 20 课一句话</p>
+    <h2 class="h2">每个机制，<span class="accent">一句格言</span></h2>
+    <div class="grid g2 mt-l" style="gap:14px 28px">
+      <div class="stage st1"><div class="sh">阶段 1 · 能动手</div>
+        <div class="sitem"><span class="sid">s01</span> 一个工具 + 一个循环 = Agent</div>
+        <div class="sitem"><span class="sid">s02</span> 加一个工具，只加一行</div>
+        <div class="sitem"><span class="sid">s03</span> 先划边界，再给自由</div>
+        <div class="sitem"><span class="sid">s04</span> 挂在循环上，不写进循环里</div>
+      </div>
+      <div class="stage st2"><div class="sh">阶段 2 · 复杂任务</div>
+        <div class="sitem"><span class="sid">s05</span> 先列步骤，再动手</div>
+        <div class="sitem"><span class="sid">s06</span> 大任务拆小，干净上下文</div>
+        <div class="sitem"><span class="sid">s08</span> 便宜的先跑贵的后跑</div>
+      </div>
+      <div class="stage st3"><div class="sh">阶段 3 · 记住恢复</div>
+        <div class="sitem"><span class="sid">s09</span> 记该记的，忘该忘的</div>
+        <div class="sitem"><span class="sid">s10</span> prompt 是组装出来的</div>
+        <div class="sitem"><span class="sid">s11</span> 错误是重试的起点</div>
+      </div>
+      <div class="stage st4"><div class="sh">阶段 4 · 长期运行</div>
+        <div class="sitem"><span class="sid">s12</span> 大目标拆任务，落盘记依赖</div>
+        <div class="sitem"><span class="sid">s13</span> 慢操作丢后台</div>
+        <div class="sitem"><span class="sid">s14</span> 定时触发，不需人推</div>
+      </div>
+      <div class="stage st5"><div class="sh">阶段 5 · 协作</div>
+        <div class="sitem"><span class="sid">s15</span> 一个搞不定，组队来</div>
+        <div class="sitem"><span class="sid">s16</span> 队友之间要有约定</div>
+        <div class="sitem"><span class="sid">s17</span> 自己看板，自己认领</div>
+        <div class="sitem"><span class="sid">s18</span> 各干各目录，互不干扰</div>
+      </div>
+      <div class="stage st6"><div class="sh">阶段 6 · 合体</div>
+        <div class="sitem"><span class="sid">s07</span> 用到时再加载</div>
+        <div class="sitem"><span class="sid">s19</span> 外接工具，标准协议</div>
+        <div class="sitem"><span class="sid">s20</span> 机制很多，循环一个</div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>这一页做个总回顾——20 课，每课一句话格言。大家可以扫一眼。</p>
+      <p>阶段 1 能动手：s01 一个循环加一个工具就是 agent；s02 加工具只加一行；s03 先划边界；s04 挂循环上不进循环里。</p>
+      <p>阶段 2 复杂任务：先列计划、子 agent 拆干净、压缩便宜的先跑。阶段 3 记住恢复：记忆、prompt 组装、错误重试。阶段 4 长期：任务落盘、后台、cron。</p>
+      <p>阶段 5 协作是重头：组队、协议、自治、隔离。阶段 6 合体：技能、MCP、终章。</p>
+      <p>你会发现这些格言有一个共同的气质——<em>循环保持稳定，机制挂在外面；便宜的先做贵的后做；信任模型，把工程精力放在 harness 上</em>。这不是 20 个孤立的技巧，是一套连贯的工程哲学。能记住这几句，整门课的精髓你就带走了。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 35. CLOSING THESIS ============ -->
+  <section class="slide" data-title="结语">
+    <p class="kicker">// 结语</p>
+    <h2 class="h2">造好 Harness，<br><span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent">Agent 会完成剩下的</span></h2>
+    <div class="grid g3 mt-l" style="gap:16px">
+      <div class="card card-accent">
+        <h4>① 循环属于 agent</h4>
+        <p>那个 <span class="mono">while True</span> 是模型的舞台——它决定调什么、何时停。从 s01 到 s20，骨架没动过。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>② 机制属于 harness</h4>
+        <p>工具、权限、hook、压缩、记忆、任务、团队、插件——全是为 agent 造的"栖居世界"。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>③ 模式可泛化</h4>
+        <p>编程 agent 的 harness 是 IDE/终端。换成传感器/预订系统/产线——同样的循环，不同的工具。</p>
+      </div>
+    </div>
+    <div class="eq mt-l" style="font-size:clamp(16px,1.9vw,22px)">最好的 agent 产品，<span class="eq"></span>出自那些明白<span class="plus"> </span><span style="color:var(--accent-2)">自己的工作是 harness 而非 intelligence</span> 的工程师之手。</div>
+    <p class="tc mt-l" style="font-family:var(--font-mono);color:var(--accent-3);font-size:18px">Bash is all you need. Real agents are all the universe needs.</p>
+    <aside class="notes">
+      <p>好，整门课到这里就讲完了。最后我想留三句话给大家。</p>
+      <p><strong>第一，循环属于 agent。</strong>那个 while True 是模型的舞台——它决定调什么工具、什么时候停。我们从 s01 走到 s20，这个骨架一个字没改过。</p>
+      <p><strong>第二，机制属于 harness。</strong>工具、权限、hook、压缩、记忆、任务、团队、插件——所有这些都是我们为 agent 造的那个"栖居世界"。你不是在写智能，你是在盖房子让智能住进来。</p>
+      <p><strong>第三，模式可以泛化。</strong>这门课教的是编程 agent 的 harness——IDE、终端、文件系统。但同样的循环和设计模式，换上传感器就是农业 agent，换上预订系统就是酒店 agent，换上产线就是制造业 agent。只要有一个任务需要被感知、推理和执行，agent 就需要一个 harness。</p>
+      <p>底下这句话是我最想送给大家的——<em>最好的 agent 产品，出自那些明白自己的工作是 harness 而非 intelligence 的工程师之手</em>。</p>
+      <p>先铺满工作室，然后是农田、医院、工厂，然后是城市，然后是星球。Bash is all you need. 谢谢大家。</p>
+    </aside>
+  </section>
+
+  <!-- ============ 36. THANKS / Q&A ============ -->
+  <section class="slide" data-title="Thanks">
+    <p class="kicker">// thanks · Q&amp;A</p>
+    <h1 class="h1" style="font-size:clamp(48px,7vw,96px)">Thank <span class="accent">You</span></h1>
+    <p class="lede mt-m">20 课走完，你已经从内到外理解了 harness 工程。</p>
+    <div class="grid g2 mt-l" style="gap:20px;max-width:760px">
+      <div class="card card-soft">
+        <h4>📚 继续深入</h4>
+        <p class="mt-s" style="font-size:14px">从 s01 读到 s20，每章都有可运行的 <span class="mono">code.py</span>。<br><span class="mono">github.com/shareAI-lab/learn-claude-code</span></p>
+      </div>
+      <div class="card card-soft">
+        <h4>🚀 落地产品</h4>
+        <p class="mt-s" style="font-size:14px"><b>Kode Agent CLI</b> · <span class="mono">npm i -g @shareai-lab/kode</span><br><b>Kode Agent SDK</b> · 把 agent 能力嵌入应用</p>
+      </div>
+    </div>
+    <div class="deck-footer">
+      <span class="mono">learn-claude-code · 20 lessons</span>
+      <span>有问题现在开始 · 按 <b>S</b> 看逐字稿</span>
+    </div>
+    <aside class="notes">
+      <p>这就是我今天全部的内容。感谢大家听到这里。</p>
+      <p>20 课走完，你已经从内到外理解了 harness 工程是怎么回事——从一个 30 行的循环，到一个完整的多 agent 协作系统。</p>
+      <p>如果想继续深入，强烈建议去仓库把每一课的 code.py 都跑一遍，代码比看 PPT 直观得多。如果想直接用产品，可以试试 Kode Agent CLI，装完即用；或者用 Kode Agent SDK 把 agent 能力嵌入你自己的应用。</p>
+      <p>这份 PPT 是支持演讲者模式的，按 S 可以看到每页的逐字稿。如果你以后要做类似的技术分享，这个模式我非常推荐。</p>
+      <p>好，有问题现在开始提问。谢谢大家。</p>
+    </aside>
+  </section>
+
+</div>
+
+<div style="position:fixed;bottom:12px;left:12px;font-size:11px;color:var(--text-3);opacity:.5;z-index:100;pointer-events:none">
+  S 演讲者视图 · T 切换主题 · ← → 翻页 · F 全屏 · O 总览
+</div>
+
+<script src="runtime.js"></script>
+</body>
+</html>
